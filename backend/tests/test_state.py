@@ -5,6 +5,7 @@ from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
 from backend.app.clipboard import ClipboardCapture
+from backend.app.models import HistoryRecord
 from backend.app.state import AppState
 from backend.app.storage import AppStorage
 
@@ -47,6 +48,23 @@ def image_uri_to_path(image_uri: str) -> Path:
     parsed = urlparse(image_uri)
     assert parsed.scheme == "file"
     return Path(url2pathname(unquote(parsed.path)))
+
+
+def sample_record_for_summary(summary: str, *, captured_at: str) -> HistoryRecord:
+    return HistoryRecord(
+        id=f"record-{summary.replace(' ', '-')}",
+        type="text",
+        summary=summary,
+        detail=summary,
+        meta="Text",
+        source_app="VS Code",
+        source_glyph="VS",
+        pinned=False,
+        created_at=captured_at,
+        updated_at=captured_at,
+        content_hash=f"hash-{summary}",
+        plain_text=summary,
+    )
 
 
 def test_snapshot_loads_empty_persistent_state_by_default(tmp_path: Path) -> None:
@@ -371,3 +389,44 @@ def test_retention_prunes_replaced_image_files(tmp_path: Path) -> None:
 
     assert not first_image_path.exists()
     assert second_image_path.exists()
+
+
+def test_restart_uses_persisted_custom_storage_path(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    custom_storage_path = tmp_path / "custom-data"
+
+    settings = state.settings.to_dict()
+    settings["storagePath"] = str(custom_storage_path)
+    state.save_settings(settings, pause_recording=False)
+    state.ingest_capture(
+        ClipboardCapture(text="persist custom storage", source_app="VS Code"),
+        captured_at="2026-03-11T10:25:00",
+    )
+
+    restarted = AppState(storage=AppStorage(base_path=tmp_path / "data"))
+
+    assert restarted.storage.base_path == custom_storage_path
+    assert restarted.settings.storage_path == str(custom_storage_path)
+    assert [record["summary"] for record in restarted.snapshot()["recentRecords"]] == ["persist custom storage"]
+
+
+def test_restart_prefers_custom_storage_history_over_default_storage_history(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    default_storage = AppStorage(base_path=tmp_path / "data")
+    custom_storage_path = tmp_path / "custom-data"
+
+    settings = state.settings.to_dict()
+    settings["storagePath"] = str(custom_storage_path)
+    state.save_settings(settings, pause_recording=False)
+    state.ingest_capture(
+        ClipboardCapture(text="custom history", source_app="VS Code"),
+        captured_at="2026-03-11T10:26:00",
+    )
+
+    default_storage.save_records([
+        sample_record_for_summary("stale default history", captured_at="2026-03-11T10:27:00")
+    ])
+
+    restarted = AppState(storage=default_storage)
+
+    assert [record["summary"] for record in restarted.snapshot()["recentRecords"]] == ["custom history"]

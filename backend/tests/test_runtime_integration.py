@@ -7,6 +7,9 @@ from backend.app.runtime import resolve_default_storage_path
 from backend.app.runtime import resolve_startup_command
 from backend.app.runtime_integration import RuntimeIntegrationController
 
+TEST_PROJECT_ROOT = Path("C:/workspace/CipherClip")
+TEST_LOCAL_APP_DATA = Path("C:/Users/TestUser/AppData/Local")
+
 
 class DummyStartupManager:
     def __init__(self) -> None:
@@ -32,7 +35,7 @@ def test_parse_shortcut_binding_maps_supported_modifier_shortcuts() -> None:
 
 def test_resolve_startup_command_uses_pythonw_for_source_runtime() -> None:
     command = resolve_startup_command(
-        project_root=Path("D:/Desktop/clipboard"),
+        project_root=TEST_PROJECT_ROOT,
         executable=Path("C:/Python312/python.exe"),
         frozen=False,
     )
@@ -44,7 +47,7 @@ def test_resolve_startup_command_uses_pythonw_for_source_runtime() -> None:
 
 def test_resolve_startup_command_uses_executable_for_frozen_runtime() -> None:
     command = resolve_startup_command(
-        project_root=Path("D:/Desktop/clipboard"),
+        project_root=TEST_PROJECT_ROOT,
         executable=Path("C:/Program Files/CipherClip/CipherClip.exe"),
         frozen=True,
     )
@@ -54,22 +57,22 @@ def test_resolve_startup_command_uses_executable_for_frozen_runtime() -> None:
 
 def test_resolve_default_storage_path_uses_project_data_for_source_runtime() -> None:
     storage_path = resolve_default_storage_path(
-        project_root=Path("D:/Desktop/clipboard"),
+        project_root=TEST_PROJECT_ROOT,
         frozen=False,
-        env={"LOCALAPPDATA": "C:/Users/Peter/AppData/Local"},
+        env={"LOCALAPPDATA": str(TEST_LOCAL_APP_DATA)},
     )
 
-    assert storage_path == Path("D:/Desktop/clipboard/data")
+    assert storage_path == TEST_PROJECT_ROOT / "data"
 
 
 def test_resolve_default_storage_path_uses_local_app_data_for_frozen_runtime() -> None:
     storage_path = resolve_default_storage_path(
-        project_root=Path("D:/Desktop/clipboard"),
+        project_root=TEST_PROJECT_ROOT,
         frozen=True,
-        env={"LOCALAPPDATA": "C:/Users/Peter/AppData/Local"},
+        env={"LOCALAPPDATA": str(TEST_LOCAL_APP_DATA)},
     )
 
-    assert storage_path == Path("C:/Users/Peter/AppData/Local/CipherClip/data")
+    assert storage_path == TEST_LOCAL_APP_DATA / "CipherClip" / "data"
 
 
 def test_runtime_integration_syncs_startup_and_global_toggle_shortcut_without_repeating() -> None:

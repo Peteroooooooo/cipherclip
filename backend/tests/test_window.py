@@ -6,9 +6,11 @@ from backend.app.window import AppWindowController
 from backend.app.window import resolve_runtime_mode
 from backend.app.window import resolve_frontend_entry
 
+TEST_PROJECT_ROOT = Path("C:/workspace/CipherClip")
+
 
 def test_resolve_frontend_entry_prefers_dev_server_and_falls_back_to_dist():
-    project_root = Path("D:/Desktop/clipboard")
+    project_root = TEST_PROJECT_ROOT
 
     dev_entry = resolve_frontend_entry(project_root=project_root, dev_mode=True)
     prod_entry = resolve_frontend_entry(project_root=project_root, dev_mode=False)
@@ -25,8 +27,11 @@ def test_menu_labels_reflect_recording_state():
     assert paused_labels[1] == "继续记录"
 
 
-def test_runtime_mode_defaults_to_static_build_when_dist_exists():
-    project_root = Path("D:/Desktop/clipboard")
+def test_runtime_mode_defaults_to_static_build_when_dist_exists(tmp_path: Path):
+    project_root = tmp_path
+    dist_index = project_root / "frontend" / "dist" / "index.html"
+    dist_index.parent.mkdir(parents=True)
+    dist_index.write_text("<!doctype html>", encoding="utf-8")
 
     dev_mode, debug_mode = resolve_runtime_mode(project_root=project_root, env={})
 
@@ -35,7 +40,7 @@ def test_runtime_mode_defaults_to_static_build_when_dist_exists():
 
 
 def test_runtime_mode_can_be_forced_to_dev_and_debug():
-    project_root = Path("D:/Desktop/clipboard")
+    project_root = TEST_PROJECT_ROOT
 
     dev_mode, debug_mode = resolve_runtime_mode(
         project_root=project_root,
@@ -50,7 +55,7 @@ def test_window_controller_hides_instead_of_closing_when_close_to_tray_is_enable
     bridge = SimpleNamespace(bind_hide_window=lambda _callback: None)
     hidden = {"value": False}
     controller = AppWindowController(
-        project_root=Path("D:/Desktop/clipboard"),
+        project_root=TEST_PROJECT_ROOT,
         bridge=bridge,
         snapshot_provider=lambda: {},
         dev_mode=False,
@@ -72,7 +77,7 @@ def test_window_controller_can_start_hidden_and_toggle_visibility():
         "restore": 0,
     }
     controller = AppWindowController(
-        project_root=Path("D:/Desktop/clipboard"),
+        project_root=TEST_PROJECT_ROOT,
         bridge=bridge,
         snapshot_provider=lambda: {},
         dev_mode=False,

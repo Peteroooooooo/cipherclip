@@ -24,11 +24,19 @@ class AppState:
     def __init__(self, *, storage: AppStorage | None = None, clipboard_service=None) -> None:
         project_root = Path(__file__).resolve().parents[2]
         default_storage_path = resolve_default_storage_path(project_root=project_root)
-        self.storage = storage or AppStorage(base_path=default_storage_path)
+        self.bootstrap_storage = storage or AppStorage(base_path=default_storage_path)
+        bootstrap_settings = self.bootstrap_storage.load_settings()
+        self.storage = self._resolve_storage_for_path(Path(bootstrap_settings.storage_path))
         self.clipboard_service = clipboard_service or WindowsClipboardService()
         self.view = "panel"
         self.is_recording_paused = False
-        self.settings = self.storage.load_settings()
+        if self.storage.base_path == self.bootstrap_storage.base_path:
+            self.settings = bootstrap_settings
+        elif self.storage.settings_path.exists():
+            self.settings = self.storage.load_settings()
+        else:
+            self.settings = deepcopy(bootstrap_settings)
+            self.settings.storage_path = str(self.storage.base_path)
         self.records = self.storage.load_records()
         self.toast: ToastMessage | None = None
         self.deleted_record: HistoryRecord | None = None
@@ -269,14 +277,19 @@ class AppState:
         return snapshot
 
     def _persist_all(self) -> None:
+        self.settings.storage_path = str(self.storage.base_path)
         self.storage.save_settings(self.settings)
         self.storage.save_records(self.records)
         self.storage.prune_unreferenced_images(record.image_path for record in self.records)
+        if self.bootstrap_storage.base_path != self.storage.base_path:
+            bootstrap_settings = deepcopy(self.settings)
+            bootstrap_settings.storage_path = str(self.storage.base_path)
+            self.bootstrap_storage.save_settings(bootstrap_settings)
 
     def _normalize_storage_path(self) -> None:
         storage_path = Path(self.settings.storage_path)
         if storage_path != self.storage.base_path:
-            target_storage = AppStorage(base_path=storage_path)
+            target_storage = self._resolve_storage_for_path(storage_path)
             self.records = self._merge_records(self.records, target_storage.load_records())
             self.records = self._migrate_record_images(self.records, target_storage)
             self.storage = target_storage
@@ -302,6 +315,11 @@ class AppState:
 
     def _find_record(self, record_id: str) -> HistoryRecord | None:
         return next((record for record in self.records if record.id == record_id), None)
+
+    def _resolve_storage_for_path(self, storage_path: Path) -> AppStorage:
+        if storage_path == self.bootstrap_storage.base_path:
+            return self.bootstrap_storage
+        return AppStorage(base_path=storage_path)
 
     @staticmethod
     def _merge_records(

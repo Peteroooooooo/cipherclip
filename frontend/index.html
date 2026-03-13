@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CipherClip</title>
+
+    <!-- Preconnect to Google Fonts for faster font loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Load fonts via link tags (discovered early by the browser preload scanner) -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    />
+
+    <!-- FOUC prevention: hide until fonts are ready -->
+    <style>
+      html:not(.fonts-ready) body { opacity: 0; }
+      html.fonts-ready body { opacity: 1; transition: opacity .12s ease; }
+    </style>
+    <script>
+      // Mark fonts-ready as soon as all fonts have loaded (or after 1.5s as fallback)
+      (function() {
+        var timeout = setTimeout(reveal, 1500);
+        document.fonts.ready.then(reveal);
+        function reveal() {
+          clearTimeout(timeout);
+          document.documentElement.classList.add('fonts-ready');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

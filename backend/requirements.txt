@@ -1,0 +1,4 @@
+pywebview==6.1
+pystray==0.19.5
+Pillow==12.1.1
+pytest==9.0.2

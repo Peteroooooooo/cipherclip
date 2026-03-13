@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import backend.main as backend_main
 from backend.main import _toggle_window_from_shortcut
 
 
@@ -24,6 +25,21 @@ def test_backend_main_script_can_be_loaded_from_project_root() -> None:
     )
 
     assert result.returncode == 0, result.stderr
+
+
+def test_resolve_project_root_prefers_meipass_in_frozen_runtime(tmp_path: Path) -> None:
+    bundle_root = tmp_path / "_internal"
+    frontend_dist = bundle_root / "frontend" / "dist"
+    frontend_dist.mkdir(parents=True)
+    (frontend_dist / "index.html").write_text("<!doctype html>", encoding="utf-8")
+
+    project_root = backend_main.resolve_project_root(
+        current_file=tmp_path / "main.py",
+        frozen=True,
+        meipass=bundle_root,
+    )
+
+    assert project_root == bundle_root
 
 
 def test_toggle_window_from_shortcut_captures_only_when_showing() -> None:

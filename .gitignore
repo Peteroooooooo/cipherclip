@@ -15,6 +15,7 @@ frontend/dist/
 build/
 dist/
 data/
+docs/
 
 *.log
 

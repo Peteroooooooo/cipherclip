@@ -4,7 +4,24 @@ import os
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+def resolve_project_root(
+    *,
+    current_file: str | Path | None = None,
+    frozen: bool | None = None,
+    meipass: str | Path | None = None,
+) -> Path:
+    frozen_runtime = bool(getattr(sys, "frozen", False)) if frozen is None else frozen
+
+    if frozen_runtime:
+        runtime_bundle_root = meipass if meipass is not None else getattr(sys, "_MEIPASS", None)
+        if runtime_bundle_root is not None:
+            return Path(runtime_bundle_root).resolve()
+
+    return Path(current_file or __file__).resolve().parents[1]
+
+
+PROJECT_ROOT = resolve_project_root(current_file=__file__)
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 

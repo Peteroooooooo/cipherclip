@@ -22,6 +22,9 @@ Write-Host "Installing build dependencies..."
 & $python -m pip install -r (Join-Path $projectRoot "backend\requirements.txt") -r (Join-Path $projectRoot "backend\requirements-build.txt")
 
 Write-Host "Packaging CipherClip..."
-& $python -m PyInstaller --noconfirm --clean (Join-Path $projectRoot "CipherClip.spec")
+& $python -m PyInstaller --noconfirm --clean `
+    --distpath (Join-Path $projectRoot "dist") `
+    --workpath (Join-Path $projectRoot "build") `
+    (Join-Path $projectRoot "CipherClip.spec")
 
 Write-Host "Build complete. Output: $(Join-Path $projectRoot 'dist\CipherClip')"

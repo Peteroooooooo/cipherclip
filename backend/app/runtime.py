@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 from typing import Mapping
@@ -17,20 +16,17 @@ def is_frozen_runtime() -> bool:
 def resolve_default_storage_path(
     *,
     project_root: Path,
+    executable: Path | str | None = None,
     frozen: bool | None = None,
     env: Mapping[str, str] | None = None,
     app_name: str = APP_NAME,
 ) -> Path:
-    runtime_env = os.environ if env is None else env
     frozen_runtime = is_frozen_runtime() if frozen is None else frozen
     if not frozen_runtime:
         return project_root / "data"
 
-    local_app_data = runtime_env.get("LOCALAPPDATA")
-    if local_app_data:
-        return Path(local_app_data) / app_name / "data"
-
-    return Path.home() / "AppData" / "Local" / app_name / "data"
+    runtime_executable = Path(executable or sys.executable).resolve()
+    return runtime_executable.parent / "data"
 
 
 def resolve_startup_command(

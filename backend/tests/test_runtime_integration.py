@@ -65,14 +65,15 @@ def test_resolve_default_storage_path_uses_project_data_for_source_runtime() -> 
     assert storage_path == TEST_PROJECT_ROOT / "data"
 
 
-def test_resolve_default_storage_path_uses_local_app_data_for_frozen_runtime() -> None:
+def test_resolve_default_storage_path_uses_executable_directory_for_frozen_runtime() -> None:
     storage_path = resolve_default_storage_path(
         project_root=TEST_PROJECT_ROOT,
+        executable=Path("C:/Program Files/CipherClip/CipherClip.exe"),
         frozen=True,
         env={"LOCALAPPDATA": str(TEST_LOCAL_APP_DATA)},
     )
 
-    assert storage_path == TEST_LOCAL_APP_DATA / "CipherClip" / "data"
+    assert storage_path == Path("C:/Program Files/CipherClip/data")
 
 
 def test_runtime_integration_syncs_startup_and_global_toggle_shortcut_without_repeating() -> None:

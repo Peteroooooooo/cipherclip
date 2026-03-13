@@ -1,119 +1,97 @@
+[English](README.en.md)
+
 # CipherClip
 
-Windows-only clipboard history desktop app built with Python, pywebview, pystray, React, and Vite.
+一个 Windows 剪贴板历史工具，基于 Python、pywebview、pystray、React 和 Vite 构建。
 
-## Stack
+## 功能与使用
 
-- `backend/`: Python 3.12 + `pywebview` + `pystray`
-- `frontend/`: React + Vite + TypeScript
+### 功能
 
-## What is included
+- 记录文本、富文本、图片和文件复制历史
+- 支持固定常用内容，避免被新记录顶掉
+- 支持托盘常驻、暂停记录、清空历史
+- 支持自定义快捷键、历史上限和存储位置
+- 支持开机启动
 
-- quick panel shell
-- settings shell
-- tray menu
-- real clipboard capture controls for text, rich text, images, and files
-- history retention and clear-all behavior
-- Python/JS bridge
-- frontend and backend tests
+### 默认操作
 
-## First-time setup
+- 打开面板：`Alt + Space`
+- 选中记录后回车：执行主操作
+- 纯文本粘贴：`Ctrl + Shift + V`
+- 固定/取消固定：`Ctrl + P`
+- 删除记录：`Delete`
 
-### Python
+### 运行发布版
+
+如果你下载的是发布包，直接运行 `CipherClip.exe` 即可。
+
+- 首次启动时，默认会在 `CipherClip.exe` 同级的 `data` 目录保存数据
+
+## 源码与开发
+
+### 项目结构
+
+- `backend/`: Python 3.12, `pywebview`, `pystray`
+- `frontend/`: React, Vite, TypeScript
+- `scripts/`: 构建脚本
+
+### 首次安装
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r backend\requirements.txt
-```
 
-### Frontend
-
-```powershell
-cd frontend
+Set-Location .\frontend
 npm install
+Set-Location ..
 ```
 
-## Default run
+### 本地开发
 
-If `frontend/dist/index.html` already exists, the desktop shell now loads the built frontend by default:
-
-```powershell
-# from the repository root
-.\.venv\Scripts\python backend\main.py
-```
-
-## Development mode
-
-Start the Vite dev server in one terminal:
+先启动前端开发服务器：
 
 ```powershell
 Set-Location .\frontend
 npm run dev
 ```
 
-Start the desktop shell in another terminal:
+再在仓库根目录启动桌面端：
 
 ```powershell
-# from the repository root
 $env:CLIPBOARD_DEV="1"
 .\.venv\Scripts\python backend\main.py
 ```
 
-The desktop shell will load `http://127.0.0.1:5173`.
-
-If you also want pywebview debug tools:
-
-```powershell
-# from the repository root
-$env:CLIPBOARD_DEV="1"
-$env:CLIPBOARD_DEBUG="1"
-.\.venv\Scripts\python backend\main.py
-```
-
-## Static mode
-
-Build the frontend first:
+### 静态运行
 
 ```powershell
 Set-Location .\frontend
 npm run build
-```
+Set-Location ..
 
-Then start the desktop shell with dev mode disabled:
-
-```powershell
-# from the repository root
 $env:CLIPBOARD_DEV="0"
 .\.venv\Scripts\python backend\main.py
 ```
 
-The desktop shell will load `frontend/dist/index.html`.
-
-## Verification
+### 测试
 
 ```powershell
-cd frontend
+Set-Location .\frontend
 npm run test:run
 npm run build
-```
+npm run lint
+Set-Location ..
 
-```powershell
 .\.venv\Scripts\python -m pytest backend/tests -q
 ```
 
-## Release build
-
-Build a Windows distributable with PyInstaller:
+### 打包发布
 
 ```powershell
 .\scripts\build-release.ps1
 ```
 
-Output will be created under `dist\CipherClip`.
+输出目录：
 
-The packaged app:
-
-- loads `frontend/dist` as bundled static assets
-- stores default user data under `%LOCALAPPDATA%\CipherClip\data`
-- supports launch-on-startup registration through the Windows `Run` key
-- starts hidden when launched from the startup entry
+- `dist\CipherClip`

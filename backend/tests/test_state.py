@@ -78,10 +78,9 @@ def test_snapshot_loads_empty_persistent_state_by_default(tmp_path: Path) -> Non
     assert snapshot["recentRecords"] == []
 
 
-def test_ingest_capture_groups_records_by_pin_and_type_limits(tmp_path: Path) -> None:
+def test_ingest_capture_keeps_pinned_records_and_latest_unpinned_limit(tmp_path: Path) -> None:
     state = build_state(tmp_path)
-    state.settings.text_history_limit = 2
-    state.settings.image_history_limit = 1
+    state.settings.history_limit = 3
 
     first = state.ingest_capture(
         ClipboardCapture(text="alpha", source_app="VS Code"),
@@ -114,8 +113,8 @@ def test_ingest_capture_groups_records_by_pin_and_type_limits(tmp_path: Path) ->
     assert [record["type"] for record in latest["pinnedRecords"]] == ["text"]
     assert [record["summary"] for record in latest["recentRecords"]] == [
         "Image 800 x 600",
+        "Image 640 x 480",
         "spec.docx",
-        "gamma",
     ]
 
 
@@ -141,7 +140,7 @@ def test_save_settings_changes_capture_behavior_immediately(tmp_path: Path) -> N
     state = build_state(tmp_path)
     settings = state.settings.to_dict()
     settings["recordImages"] = False
-    settings["textHistoryLimit"] = 1
+    settings["historyLimit"] = 1
 
     state.save_settings(settings, pause_recording=False)
     skipped = state.ingest_capture(
@@ -362,7 +361,7 @@ def test_clear_unpinned_history_prunes_image_files(tmp_path: Path) -> None:
 
 def test_retention_prunes_replaced_image_files(tmp_path: Path) -> None:
     state = build_state(tmp_path)
-    state.settings.image_history_limit = 1
+    state.settings.history_limit = 1
 
     first = state.ingest_capture(
         ClipboardCapture(

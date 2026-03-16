@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import field
 
+DEFAULT_HISTORY_LIMIT = 25
+MIN_HISTORY_LIMIT = 1
+MAX_HISTORY_LIMIT = 5000
+
 
 @dataclass(slots=True)
 class HistoryRecord:
@@ -111,8 +115,7 @@ class SettingsState:
     follow_system_theme: bool
     record_text: bool
     record_rich_text: bool
-    text_history_limit: int
-    image_history_limit: int
+    history_limit: int
     record_images: bool
     record_files: bool
     storage_path: str
@@ -125,8 +128,7 @@ class SettingsState:
             "followSystemTheme": self.follow_system_theme,
             "recordText": self.record_text,
             "recordRichText": self.record_rich_text,
-            "textHistoryLimit": self.text_history_limit,
-            "imageHistoryLimit": self.image_history_limit,
+            "historyLimit": self.history_limit,
             "recordImages": self.record_images,
             "recordFiles": self.record_files,
             "storagePath": self.storage_path,
@@ -141,8 +143,7 @@ class SettingsState:
             follow_system_theme=bool(payload["followSystemTheme"]),
             record_text=bool(payload.get("recordText", True)),
             record_rich_text=bool(payload.get("recordRichText", True)),
-            text_history_limit=int(payload["textHistoryLimit"]),
-            image_history_limit=int(payload["imageHistoryLimit"]),
+            history_limit=_history_limit_from_payload(payload.get("historyLimit")),
             record_images=bool(payload["recordImages"]),
             record_files=bool(payload.get("recordFiles", True)),
             storage_path=str(payload["storagePath"]),
@@ -177,8 +178,7 @@ def default_settings(*, storage_path: str) -> SettingsState:
         follow_system_theme=True,
         record_text=True,
         record_rich_text=True,
-        text_history_limit=1000,
-        image_history_limit=100,
+        history_limit=DEFAULT_HISTORY_LIMIT,
         record_images=True,
         record_files=True,
         storage_path=storage_path,
@@ -202,3 +202,10 @@ def _optional_string(value: object) -> str | None:
     if value is None:
         return None
     return str(value)
+
+
+def _history_limit_from_payload(value: object) -> int:
+    if value is None:
+        return DEFAULT_HISTORY_LIMIT
+
+    return max(MIN_HISTORY_LIMIT, min(MAX_HISTORY_LIMIT, int(value)))

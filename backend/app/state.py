@@ -8,7 +8,10 @@ from typing import Callable
 from .clipboard import ClipboardCapture
 from .clipboard import WindowsClipboardService
 from .clipboard import build_record_from_capture
+from .models import DEFAULT_HISTORY_LIMIT
 from .models import HistoryRecord
+from .models import MAX_HISTORY_LIMIT
+from .models import MIN_HISTORY_LIMIT
 from .models import SettingsState
 from .models import ShortcutBindings
 from .models import ToastMessage
@@ -230,8 +233,7 @@ class AppState:
             follow_system_theme=bool(settings["followSystemTheme"]),
             record_text=bool(settings.get("recordText", True)),
             record_rich_text=bool(settings.get("recordRichText", True)),
-            text_history_limit=int(settings["textHistoryLimit"]),
-            image_history_limit=int(settings["imageHistoryLimit"]),
+            history_limit=_normalize_history_limit(settings.get("historyLimit")),
             record_images=bool(settings["recordImages"]),
             record_files=bool(settings.get("recordFiles", True)),
             storage_path=str(settings["storagePath"]),
@@ -298,16 +300,9 @@ class AppState:
     def _apply_retention(self) -> None:
         sorted_records = self._sorted_records()
         retained_ids: set[str] = {record.id for record in sorted_records if record.pinned}
+        unpinned_records = [record for record in sorted_records if not record.pinned]
 
-        unpinned_text_records = [
-            record for record in sorted_records if not record.pinned and record.type in {"text", "rich_text", "file"}
-        ]
-        unpinned_image_records = [
-            record for record in sorted_records if not record.pinned and record.type == "image"
-        ]
-
-        retained_ids.update(record.id for record in unpinned_text_records[: self.settings.text_history_limit])
-        retained_ids.update(record.id for record in unpinned_image_records[: self.settings.image_history_limit])
+        retained_ids.update(record.id for record in unpinned_records[: self.settings.history_limit])
         self.records = [record for record in self.records if record.id in retained_ids]
 
     def _sorted_records(self) -> list[HistoryRecord]:
@@ -370,3 +365,10 @@ class AppState:
     def _default_settings() -> SettingsState:
         default_storage_path = resolve_default_storage_path(project_root=Path(__file__).resolve().parents[2])
         return default_settings(storage_path=str(default_storage_path))
+
+
+def _normalize_history_limit(value: object) -> int:
+    if value is None:
+        return DEFAULT_HISTORY_LIMIT
+
+    return max(MIN_HISTORY_LIMIT, min(MAX_HISTORY_LIMIT, int(value)))

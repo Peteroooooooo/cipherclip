@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, RotateCcw, Save, X } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronUp, RotateCcw, Save, X } from 'lucide-react'
 import type { SettingsState } from '../../app/types'
 
 interface SettingsViewProps {
@@ -10,6 +10,9 @@ interface SettingsViewProps {
   onClearAllHistory: () => void
   onPickStoragePath: (currentPath: string) => Promise<string | null>
 }
+
+const HISTORY_LIMIT_MIN = 1
+const HISTORY_LIMIT_MAX = 5000
 
 function Toggle({
   checked,
@@ -72,6 +75,14 @@ function ShortcutRow({
   )
 }
 
+function clampHistoryLimit(value: number) {
+  if (!Number.isFinite(value)) {
+    return HISTORY_LIMIT_MIN
+  }
+
+  return Math.min(HISTORY_LIMIT_MAX, Math.max(HISTORY_LIMIT_MIN, Math.trunc(value)))
+}
+
 export function SettingsView({
   settings,
   onSave,
@@ -81,9 +92,20 @@ export function SettingsView({
   onPickStoragePath,
 }: SettingsViewProps) {
   const [draft, setDraft] = useState(settings)
+  const [historyLimitInput, setHistoryLimitInput] = useState(String(settings.historyLimit))
+
+  const updateHistoryLimit = (value: number) => {
+    const nextValue = clampHistoryLimit(value)
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      historyLimit: nextValue,
+    }))
+    setHistoryLimitInput(String(nextValue))
+  }
 
   useEffect(() => {
     setDraft(settings)
+    setHistoryLimitInput(String(settings.historyLimit))
   }, [settings])
 
   return (
@@ -206,41 +228,53 @@ export function SettingsView({
           <div className="settings-grid">
             <label className="field-row">
               <span className="field-label">
-                <strong>Text Clip Limit</strong>
-                <span>100 – 5000</span>
+                <strong>History Limit</strong>
+                <span>Max unpinned records to keep. Pinned items always stay.</span>
               </span>
-              <input
-                className="field-input"
-                max={5000}
-                min={100}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    textHistoryLimit: Number(event.target.value),
-                  })
-                }
-                type="number"
-                value={draft.textHistoryLimit}
-              />
-            </label>
-            <label className="field-row">
-              <span className="field-label">
-                <strong>Image Clip Limit</strong>
-                <span>10 – 500</span>
-              </span>
-              <input
-                className="field-input"
-                max={500}
-                min={10}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    imageHistoryLimit: Number(event.target.value),
-                  })
-                }
-                type="number"
-                value={draft.imageHistoryLimit}
-              />
+              <div className="stepper-control">
+                <input
+                  aria-label="History Limit"
+                  className="stepper-input"
+                  inputMode="numeric"
+                  max={HISTORY_LIMIT_MAX}
+                  min={HISTORY_LIMIT_MIN}
+                  onBlur={() => {
+                    if (historyLimitInput.trim() === '') {
+                      setHistoryLimitInput(String(draft.historyLimit))
+                    }
+                  }}
+                  onChange={(event) => {
+                    const nextValue = event.target.value
+                    setHistoryLimitInput(nextValue)
+
+                    if (nextValue.trim() === '') {
+                      return
+                    }
+
+                    updateHistoryLimit(Number(nextValue))
+                  }}
+                  type="number"
+                  value={historyLimitInput}
+                />
+                <div className="stepper-buttons">
+                  <button
+                    aria-label="Increase history limit"
+                    className="stepper-button"
+                    onClick={() => updateHistoryLimit(draft.historyLimit + 1)}
+                    type="button"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                  <button
+                    aria-label="Decrease history limit"
+                    className="stepper-button"
+                    onClick={() => updateHistoryLimit(draft.historyLimit - 1)}
+                    type="button"
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
+              </div>
             </label>
             <div className="field-row field-row-storage">
               <div className="field-label">

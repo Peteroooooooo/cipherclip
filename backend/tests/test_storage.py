@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from backend.app.models import HistoryRecord, SettingsState, ShortcutBindings
@@ -30,8 +31,7 @@ def sample_settings(storage_path: Path) -> SettingsState:
         follow_system_theme=True,
         record_text=True,
         record_rich_text=True,
-        text_history_limit=123,
-        image_history_limit=45,
+        history_limit=123,
         record_images=True,
         record_files=True,
         storage_path=str(storage_path),
@@ -58,7 +58,44 @@ def test_storage_round_trips_settings_and_records(tmp_path: Path) -> None:
 
     assert loaded_settings.record_text is True
     assert loaded_settings.record_rich_text is True
-    assert loaded_settings.text_history_limit == 123
+    assert loaded_settings.history_limit == 123
     assert loaded_settings.record_files is True
+    assert "historyLimit" in loaded_settings.to_dict()
+    assert "textHistoryLimit" not in loaded_settings.to_dict()
+    assert "imageHistoryLimit" not in loaded_settings.to_dict()
     assert loaded_records[0].summary == "stored text"
     assert loaded_records[0].plain_text == "stored text"
+
+
+def test_storage_loads_legacy_settings_with_default_history_limit(tmp_path: Path) -> None:
+    storage = AppStorage(base_path=tmp_path / "data")
+    storage.settings_path.write_text(
+        json.dumps(
+            {
+                "launchOnStartup": True,
+                "closeToTray": True,
+                "followSystemTheme": True,
+                "recordText": True,
+                "recordRichText": True,
+                "textHistoryLimit": 1000,
+                "imageHistoryLimit": 100,
+                "recordImages": True,
+                "recordFiles": True,
+                "storagePath": str(storage.base_path),
+                "shortcuts": {
+                    "togglePanel": "Alt + Space",
+                    "primaryAction": "Enter",
+                    "pastePlainText": "Ctrl + Shift + V",
+                    "togglePin": "Ctrl + P",
+                    "deleteRecord": "Delete",
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    loaded_settings = storage.load_settings()
+
+    assert loaded_settings.history_limit == 25

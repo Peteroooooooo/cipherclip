@@ -36,8 +36,7 @@ export interface SettingsState {
   followSystemTheme: boolean
   recordText: boolean
   recordRichText: boolean
-  textHistoryLimit: number
-  imageHistoryLimit: number
+  historyLimit: number
   recordImages: boolean
   recordFiles: boolean
   storagePath: string

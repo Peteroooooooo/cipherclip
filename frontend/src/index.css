@@ -817,6 +817,112 @@ input:focus-visible {
   color: var(--text-3);
 }
 
+.stepper-control {
+  width: 128px;
+  min-width: 128px;
+  height: 44px;
+  display: flex;
+  align-items: stretch;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 196, 201, 0.18);
+  background:
+    linear-gradient(180deg, rgba(26, 31, 36, 0.92), rgba(16, 20, 24, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.26),
+    0 10px 24px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+  transition: border-color var(--fast), box-shadow var(--fast), transform var(--fast);
+}
+
+.stepper-control:hover {
+  border-color: rgba(0, 240, 255, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28),
+    0 12px 30px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(0, 240, 255, 0.05);
+}
+
+.stepper-control:focus-within {
+  border-color: rgba(0, 240, 255, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(0, 240, 255, 0.1),
+    0 0 20px rgba(0, 240, 255, 0.14);
+}
+
+.stepper-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.stepper-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.stepper-input::-webkit-outer-spin-button,
+.stepper-input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.stepper-buttons {
+  width: 34px;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.stepper-button {
+  min-height: 22px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: rgba(232, 240, 242, 0.7);
+  display: grid;
+  place-items: center;
+  transition: color var(--fast), background var(--fast), transform var(--fast);
+}
+
+.stepper-button + .stepper-button {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stepper-button:hover {
+  color: var(--text-1);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.stepper-button:active {
+  background: rgba(0, 240, 255, 0.12);
+  color: var(--accent);
+}
+
+.stepper-button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 240, 255, 0.38);
+}
+
 .storage-path-stack {
   display: flex;
   flex-direction: column;
@@ -1027,6 +1133,11 @@ input:focus-visible {
   .field-input,
   .field-readonly {
     width: 100%;
+  }
+
+  .stepper-control {
+    width: 100%;
+    min-width: 0;
   }
 
   .storage-path-browse {

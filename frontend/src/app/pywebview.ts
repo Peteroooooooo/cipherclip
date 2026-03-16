@@ -30,8 +30,7 @@ const defaultSettings: SettingsState = {
   followSystemTheme: true,
   recordText: true,
   recordRichText: true,
-  textHistoryLimit: 1000,
-  imageHistoryLimit: 100,
+  historyLimit: 25,
   recordImages: true,
   recordFiles: true,
   storagePath: '%LOCALAPPDATA%\\CipherClip\\data',
@@ -48,11 +47,20 @@ function normalizeSettings(settings: Partial<SettingsState>): SettingsState {
   return {
     ...structuredClone(defaultSettings),
     ...settings,
+    historyLimit: normalizeHistoryLimit(settings.historyLimit),
     shortcuts: {
       ...structuredClone(defaultSettings.shortcuts),
       ...(settings.shortcuts ?? {}),
     },
   }
+}
+
+function normalizeHistoryLimit(value: number | undefined) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return defaultSettings.historyLimit
+  }
+
+  return Math.min(5000, Math.max(1, Math.trunc(value)))
 }
 
 function createMockRecords(): HistoryRecord[] {

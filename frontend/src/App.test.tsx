@@ -35,6 +35,9 @@ describe('App shell', () => {
     expect(screen.getByRole('button', { name: 'Record Rich Text' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Record Images' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Record Files' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('spinbutton', { name: 'History Limit' })).toHaveValue(25)
+    expect(screen.queryByRole('spinbutton', { name: 'Text Clip Limit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton', { name: 'Image Clip Limit' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Clear All History' })).toBeInTheDocument()
   })
 
@@ -257,5 +260,44 @@ describe('App shell', () => {
     expect(storagePathStack).toContainElement(storagePathBlock)
     expect(storagePathStack).toContainElement(browseButton)
     expect(storagePathBlock.compareDocumentPosition(browseButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  test('persists a customized history limit after saving settings', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+
+    const historyLimitInput = screen.getByRole('spinbutton', { name: 'History Limit' })
+    await user.clear(historyLimitInput)
+    await user.type(historyLimitInput, '12')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+
+    expect(screen.getByRole('spinbutton', { name: 'History Limit' })).toHaveValue(12)
+  })
+
+  test('uses a custom vertical stepper for the history limit control', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+
+    const historyLimitInput = screen.getByRole('spinbutton', { name: 'History Limit' })
+    expect(historyLimitInput).toHaveValue(25)
+
+    await user.click(screen.getByRole('button', { name: 'Increase history limit' }))
+
+    expect(historyLimitInput).toHaveValue(26)
+    expect(screen.getByRole('button', { name: 'Decrease history limit' })).toBeInTheDocument()
   })
 })

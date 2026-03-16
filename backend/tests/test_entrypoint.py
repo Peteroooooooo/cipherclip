@@ -9,6 +9,26 @@ import backend.main as backend_main
 from backend.main import _toggle_window_from_shortcut
 
 
+class DummySingleInstanceManager:
+    def __init__(self, *, primary: bool) -> None:
+        self.primary = primary
+        self.calls: list[str] = []
+
+    def acquire_primary(self) -> bool:
+        self.calls.append("acquire_primary")
+        return self.primary
+
+    def signal_primary(self) -> bool:
+        self.calls.append("signal_primary")
+        return True
+
+    def start_activation_listener(self, _callback) -> None:
+        self.calls.append("start_activation_listener")
+
+    def stop(self) -> None:
+        self.calls.append("stop")
+
+
 def test_backend_main_script_can_be_loaded_from_project_root() -> None:
     project_root = Path(__file__).resolve().parents[2]
 
@@ -60,3 +80,42 @@ def test_toggle_window_from_shortcut_captures_only_when_showing() -> None:
 
     assert state.captured == 1
     assert state.cleared == 1
+
+
+def test_main_signals_existing_instance_and_skips_bootstrap(monkeypatch) -> None:
+    manager = DummySingleInstanceManager(primary=False)
+
+    monkeypatch.delenv("CLIPBOARD_TEST_MODE", raising=False)
+    monkeypatch.setattr(backend_main, "create_single_instance_manager", lambda: manager, raising=False)
+
+    def fail_app_state():
+        raise AssertionError("AppState should not be created for a secondary launch")
+
+    monkeypatch.setattr(backend_main, "AppState", fail_app_state)
+
+    backend_main.main([])
+
+    assert manager.calls == [
+        "acquire_primary",
+        "signal_primary",
+        "stop",
+    ]
+
+
+def test_main_hidden_secondary_launch_exits_without_signaling(monkeypatch) -> None:
+    manager = DummySingleInstanceManager(primary=False)
+
+    monkeypatch.delenv("CLIPBOARD_TEST_MODE", raising=False)
+    monkeypatch.setattr(backend_main, "create_single_instance_manager", lambda: manager, raising=False)
+
+    def fail_app_state():
+        raise AssertionError("AppState should not be created for a secondary launch")
+
+    monkeypatch.setattr(backend_main, "AppState", fail_app_state)
+
+    backend_main.main([backend_main.START_HIDDEN_FLAG])
+
+    assert manager.calls == [
+        "acquire_primary",
+        "stop",
+    ]

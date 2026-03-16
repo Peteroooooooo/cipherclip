@@ -37,6 +37,8 @@ from backend.app.runtime import START_HIDDEN_FLAG
 from backend.app.runtime_integration import NoopStartupManager
 from backend.app.runtime_integration import RuntimeIntegrationController
 from backend.app.runtime_integration import WindowsStartupManager
+from backend.app.single_instance import NoopSingleInstanceManager
+from backend.app.single_instance import WindowsSingleInstanceManager
 from backend.app.state import AppState
 from backend.app.tray import TrayController
 from backend.app.tray import confirm_clear_all_history
@@ -51,6 +53,13 @@ def main(argv: list[str] | None = None) -> None:
     start_hidden = START_HIDDEN_FLAG in launch_args
 
     if os.getenv("CLIPBOARD_TEST_MODE") == "1":
+        return
+
+    single_instance_manager = create_single_instance_manager()
+    if not single_instance_manager.acquire_primary():
+        if not start_hidden:
+            single_instance_manager.signal_primary()
+        single_instance_manager.stop()
         return
 
     state = AppState()
@@ -69,6 +78,7 @@ def main(argv: list[str] | None = None) -> None:
         close_to_tray_provider=lambda: state.settings.close_to_tray,
     )
     window_controller.create()
+    single_instance_manager.start_activation_listener(window_controller.show)
     bridge._bind_confirm_clear_all_history(confirm_clear_all_history)
     startup_manager = WindowsStartupManager() if os.name == "nt" else NoopStartupManager()
     hotkey_manager = WindowsGlobalHotkeyManager() if os.name == "nt" else NoopGlobalHotkeyManager()
@@ -91,6 +101,7 @@ def main(argv: list[str] | None = None) -> None:
             window_controller=window_controller,
             monitor=monitor,
             runtime_integration=runtime_integration,
+            single_instance_manager=single_instance_manager,
         ),
     )
     tray.exit_app = lambda: _shutdown(
@@ -98,6 +109,7 @@ def main(argv: list[str] | None = None) -> None:
         window_controller=window_controller,
         monitor=monitor,
         runtime_integration=runtime_integration,
+        single_instance_manager=single_instance_manager,
     )
     tray.run()
     monitor.start()
@@ -111,6 +123,7 @@ def _shutdown(
     window_controller: AppWindowController,
     monitor: ClipboardMonitor | None,
     runtime_integration: RuntimeIntegrationController | None,
+    single_instance_manager: NoopSingleInstanceManager | WindowsSingleInstanceManager | None,
 ) -> None:
     if tray is not None:
         tray.stop()
@@ -118,6 +131,8 @@ def _shutdown(
         monitor.stop()
     if runtime_integration is not None:
         runtime_integration.stop()
+    if single_instance_manager is not None:
+        single_instance_manager.stop()
     window_controller.destroy()
 
 
@@ -127,6 +142,12 @@ def _toggle_window_from_shortcut(*, state: AppState, window_controller: AppWindo
     else:
         state.clear_paste_target()
     window_controller.toggle_visibility()
+
+
+def create_single_instance_manager() -> NoopSingleInstanceManager | WindowsSingleInstanceManager:
+    if os.name == "nt":
+        return WindowsSingleInstanceManager()
+    return NoopSingleInstanceManager()
 
 
 if __name__ == "__main__":

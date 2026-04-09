@@ -4,9 +4,15 @@ $ErrorActionPreference = "Stop"
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptRoot
 $python = Join-Path $projectRoot ".venv\Scripts\python.exe"
+$legacyOnedirOutput = Join-Path $projectRoot "dist\CipherClip"
 
 if (-not (Test-Path $python)) {
     throw "Python virtual environment not found at $python"
+}
+
+if (Test-Path $legacyOnedirOutput) {
+    Write-Host "Removing legacy onedir output..."
+    Remove-Item -LiteralPath $legacyOnedirOutput -Recurse -Force
 }
 
 Write-Host "Building frontend..."
@@ -27,4 +33,4 @@ Write-Host "Packaging CipherClip..."
     --workpath (Join-Path $projectRoot "build") `
     (Join-Path $projectRoot "CipherClip.spec")
 
-Write-Host "Build complete. Output: $(Join-Path $projectRoot 'dist\CipherClip')"
+Write-Host "Build complete. Output: $(Join-Path $projectRoot 'dist\CipherClip.exe')"

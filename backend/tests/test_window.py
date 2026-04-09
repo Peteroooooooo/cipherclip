@@ -1,10 +1,12 @@
 from pathlib import Path
 from types import SimpleNamespace
+from types import FunctionType
 
 from backend.app.tray import menu_labels
 from backend.app.window import AppWindowController
 from backend.app.window import resolve_runtime_mode
 from backend.app.window import resolve_frontend_entry
+from backend.app.window import set_window_on_top
 
 TEST_PROJECT_ROOT = Path("C:/workspace/CipherClip")
 
@@ -98,3 +100,80 @@ def test_window_controller_can_start_hidden_and_toggle_visibility():
     assert calls["show"] == 1
     assert calls["restore"] == 1
     assert calls["hide"] == 1
+
+
+def test_window_controller_can_toggle_always_on_top_for_current_run():
+    bridge = SimpleNamespace(
+        _bind_hide_window=lambda _callback: None,
+        _bind_pick_storage_path=lambda _callback: None,
+    )
+    topmost = {"value": False}
+    set_on_top_calls: list[bool] = []
+    controller = AppWindowController(
+        project_root=TEST_PROJECT_ROOT,
+        bridge=bridge,
+        snapshot_provider=lambda: {},
+        dev_mode=False,
+        set_on_top_callback=lambda _window, enabled: (set_on_top_calls.append(enabled), topmost.__setitem__("value", enabled)),
+    )
+    controller.window = SimpleNamespace()
+
+    assert controller.is_always_on_top is False
+
+    controller.toggle_always_on_top()
+
+    assert controller.is_always_on_top is True
+    assert topmost["value"] is True
+    assert set_on_top_calls == [True]
+
+
+def test_window_controller_reapplies_always_on_top_when_showing_window():
+    bridge = SimpleNamespace(
+        _bind_hide_window=lambda _callback: None,
+        _bind_pick_storage_path=lambda _callback: None,
+    )
+    set_on_top_calls: list[bool] = []
+    calls = {
+        "show": 0,
+        "restore": 0,
+    }
+    controller = AppWindowController(
+        project_root=TEST_PROJECT_ROOT,
+        bridge=bridge,
+        snapshot_provider=lambda: {},
+        dev_mode=False,
+        set_on_top_callback=lambda _window, enabled: set_on_top_calls.append(enabled),
+    )
+    controller.window = SimpleNamespace(
+        show=lambda: calls.__setitem__("show", calls["show"] + 1),
+        restore=lambda: calls.__setitem__("restore", calls["restore"] + 1),
+    )
+
+    controller.toggle_always_on_top()
+    controller.show()
+
+    assert calls["show"] == 1
+    assert calls["restore"] == 1
+    assert set_on_top_calls == [True, True]
+
+
+def test_set_window_on_top_updates_native_topmost_on_ui_thread():
+    invoke_calls = {"count": 0}
+
+    class NativeWindow:
+        def __init__(self) -> None:
+            self.TopMost = False
+            self.InvokeRequired = True
+
+        def Invoke(self, callback):
+            if isinstance(callback, FunctionType):
+                raise TypeError("Invoke must receive a .NET delegate, not a raw Python function")
+            invoke_calls["count"] += 1
+            callback()
+
+    window = SimpleNamespace(native=NativeWindow())
+
+    set_window_on_top(window, True)
+
+    assert window.native.TopMost is True
+    assert invoke_calls["count"] == 1

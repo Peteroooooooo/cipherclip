@@ -8,6 +8,17 @@ from backend.app.state import AppState
 from backend.app.storage import AppStorage
 
 
+class DummyClipboardService:
+    def __init__(self) -> None:
+        self.writes: list[tuple[str, bool]] = []
+
+    def write_record(self, record, *, as_plain_text: bool) -> None:
+        self.writes.append((record.id, as_plain_text))
+
+    def has_paste_target(self) -> bool:
+        return False
+
+
 def build_bridge(tmp_path: Path) -> AppBridge:
     state = AppState(storage=AppStorage(base_path=tmp_path / "data"))
     return AppBridge(state)
@@ -21,6 +32,7 @@ def test_bridge_returns_frontend_friendly_snapshot_shape(tmp_path: Path) -> None
     assert set(snapshot) == {
         "view",
         "isRecordingPaused",
+        "isAlwaysOnTop",
         "pinnedRecords",
         "recentRecords",
         "settings",
@@ -61,7 +73,7 @@ def test_bridge_methods_proxy_real_record_updates(tmp_path: Path) -> None:
     assert cleared_snapshot["recentRecords"] == []
 
 
-def test_bridge_copy_record_proxies_without_hiding_window(tmp_path: Path) -> None:
+def test_bridge_copy_record_hides_window_after_copying(tmp_path: Path) -> None:
     state = AppState(storage=AppStorage(base_path=tmp_path / "data"))
     bridge = AppBridge(state)
     hide_calls = {"count": 0}
@@ -74,6 +86,65 @@ def test_bridge_copy_record_proxies_without_hiding_window(tmp_path: Path) -> Non
     record_id = created["recentRecords"][0]["id"]
 
     bridge.copy_record(record_id)
+
+    assert hide_calls["count"] == 1
+
+
+def test_bridge_copy_record_keeps_window_visible_while_always_on_top(tmp_path: Path) -> None:
+    state = AppState(storage=AppStorage(base_path=tmp_path / "data"))
+    bridge = AppBridge(state)
+    hide_calls = {"count": 0}
+    bridge._bind_hide_window(lambda: hide_calls.__setitem__("count", hide_calls["count"] + 1))
+    bridge._bind_is_always_on_top(lambda: True)
+
+    created = state.ingest_capture(
+        ClipboardCapture(text="copy bridge pinned", source_app="VS Code"),
+        captured_at="2026-03-11T11:05:30",
+    )
+    record_id = created["recentRecords"][0]["id"]
+
+    bridge.copy_record(record_id)
+
+    assert hide_calls["count"] == 0
+
+
+def test_bridge_primary_action_hides_window_even_without_paste_target(tmp_path: Path) -> None:
+    state = AppState(
+        storage=AppStorage(base_path=tmp_path / "data"),
+        clipboard_service=DummyClipboardService(),
+    )
+    bridge = AppBridge(state)
+    hide_calls = {"count": 0}
+    bridge._bind_hide_window(lambda: hide_calls.__setitem__("count", hide_calls["count"] + 1))
+
+    created = state.ingest_capture(
+        ClipboardCapture(text="primary action bridge", source_app="VS Code"),
+        captured_at="2026-03-11T11:06:00",
+    )
+    record_id = created["recentRecords"][0]["id"]
+
+    bridge.trigger_primary_action(record_id)
+
+    assert hide_calls["count"] == 1
+
+
+def test_bridge_primary_action_keeps_window_visible_while_always_on_top(tmp_path: Path) -> None:
+    state = AppState(
+        storage=AppStorage(base_path=tmp_path / "data"),
+        clipboard_service=DummyClipboardService(),
+    )
+    bridge = AppBridge(state)
+    hide_calls = {"count": 0}
+    bridge._bind_hide_window(lambda: hide_calls.__setitem__("count", hide_calls["count"] + 1))
+    bridge._bind_is_always_on_top(lambda: True)
+
+    created = state.ingest_capture(
+        ClipboardCapture(text="primary action topmost", source_app="VS Code"),
+        captured_at="2026-03-11T11:06:30",
+    )
+    record_id = created["recentRecords"][0]["id"]
+
+    bridge.trigger_primary_action(record_id)
 
     assert hide_calls["count"] == 0
 
@@ -108,3 +179,17 @@ def test_bridge_can_delegate_clear_all_history_confirmation(tmp_path: Path) -> N
     bridge._bind_confirm_clear_all_history(lambda: False)
 
     assert bridge.confirm_clear_all_history() is False
+
+
+def test_bridge_can_toggle_always_on_top_for_current_run(tmp_path: Path) -> None:
+    bridge = build_bridge(tmp_path)
+    always_on_top = {"value": False}
+
+    bridge._bind_toggle_always_on_top(lambda: always_on_top.__setitem__("value", not always_on_top["value"]))
+    bridge._bind_is_always_on_top(lambda: always_on_top["value"])
+
+    initial_snapshot = bridge.get_app_state()
+    updated_snapshot = bridge.toggle_always_on_top()
+
+    assert initial_snapshot["isAlwaysOnTop"] is False
+    assert updated_snapshot["isAlwaysOnTop"] is True

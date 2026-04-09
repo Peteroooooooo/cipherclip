@@ -35,6 +35,7 @@ A Windows clipboard history tool built with Python, pywebview, pystray, React, a
 If you are using a release build, launch `CipherClip.exe`.
 
 - On first launch, data is stored in the `data` folder beside `CipherClip.exe` by default
+- The release build script rebuilds the release artifact, but it does not proactively delete this `data` folder
 
 ## Source and Development
 
@@ -102,4 +103,4 @@ Set-Location ..
 
 Output:
 
-- `dist\CipherClip`
+- `dist\CipherClip.exe`

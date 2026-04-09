@@ -59,6 +59,7 @@ export interface ToastMessage {
 export interface AppSnapshot {
   view: AppView
   isRecordingPaused: boolean
+  isAlwaysOnTop: boolean
   pinnedRecords: HistoryRecord[]
   recentRecords: HistoryRecord[]
   settings: SettingsState

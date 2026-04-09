@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import App from './App'
-import { resetDesktopApiMock } from './app/pywebview'
+import { desktopApi, resetDesktopApiMock } from './app/pywebview'
 
 describe('App shell', () => {
   beforeEach(() => {
@@ -19,6 +19,11 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Search clipboard history' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument()
+    const alwaysOnTopButton = screen.getByRole('button', { name: 'Always on top' })
+    const recordingButton = screen.getByRole('button', { name: 'REC' })
+
+    expect(alwaysOnTopButton).toHaveAttribute('aria-pressed', 'false')
+    expect(alwaysOnTopButton.compareDocumentPosition(recordingButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
 
@@ -75,8 +80,9 @@ describe('App shell', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
-  test('copy button keeps the panel visible for repeated selection', async () => {
+  test('copy button delegates to the desktop copy action', async () => {
     const user = userEvent.setup()
+    const copyRecordSpy = vi.spyOn(desktopApi, 'copyRecord')
 
     render(<App />)
 
@@ -85,8 +91,7 @@ describe('App shell', () => {
     const [copyButton] = screen.getAllByRole('button', { name: 'Copy' })
     await user.click(copyButton)
 
-    expect(screen.getByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Search clipboard history' })).toBeInTheDocument()
+    expect(copyRecordSpy).toHaveBeenCalledTimes(1)
   })
 
   test('does not scroll cards into view while hovering with the mouse', async () => {
@@ -299,5 +304,20 @@ describe('App shell', () => {
 
     expect(historyLimitInput).toHaveValue(26)
     expect(screen.getByRole('button', { name: 'Decrease history limit' })).toBeInTheDocument()
+  })
+
+  test('toggles the always-on-top toolbar pin button', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+
+    const alwaysOnTopButton = screen.getByRole('button', { name: 'Always on top' })
+    expect(alwaysOnTopButton).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(alwaysOnTopButton)
+
+    expect(alwaysOnTopButton).toHaveAttribute('aria-pressed', 'true')
   })
 })

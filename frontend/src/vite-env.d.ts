@@ -9,6 +9,7 @@ declare global {
         get_app_state: () => Promise<AppSnapshot>
         set_view: (view: AppView) => Promise<AppSnapshot>
         toggle_pause: () => Promise<AppSnapshot>
+        toggle_always_on_top: () => Promise<AppSnapshot>
         toggle_pin: (recordId: string) => Promise<AppSnapshot>
         delete_record: (recordId: string) => Promise<AppSnapshot>
         undo_delete: () => Promise<AppSnapshot>

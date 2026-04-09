@@ -72,7 +72,7 @@ def main(argv: list[str] | None = None) -> None:
     window_controller = AppWindowController(
         project_root=project_root,
         bridge=bridge,
-        snapshot_provider=state.snapshot,
+        snapshot_provider=bridge.get_app_state,
         dev_mode=dev_mode,
         start_hidden=start_hidden,
         close_to_tray_provider=lambda: state.settings.close_to_tray,
@@ -88,7 +88,7 @@ def main(argv: list[str] | None = None) -> None:
         startup_command=resolve_startup_command(project_root=project_root),
         toggle_window=lambda: _toggle_window_from_shortcut(state=state, window_controller=window_controller),
     )
-    state.subscribe(window_controller.dispatch_snapshot)
+    state.subscribe(lambda _snapshot: window_controller.dispatch_snapshot(bridge.get_app_state()))
     state.subscribe(runtime_integration.sync)
     runtime_integration.sync(state.snapshot())
 

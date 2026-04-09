@@ -35,6 +35,7 @@
 如果你下载的是发布包，直接运行 `CipherClip.exe` 即可。
 
 - 首次启动时，默认会在 `CipherClip.exe` 同级的 `data` 目录保存数据
+- 打包脚本会重新生成发布产物，但不会主动删除这个 `data` 目录
 
 ## 源码与开发
 
@@ -102,4 +103,4 @@ Set-Location ..
 
 输出目录：
 
-- `dist\CipherClip`
+- `dist\CipherClip.exe`

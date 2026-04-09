@@ -241,6 +241,16 @@ input:focus-visible {
   color: var(--accent);
 }
 
+.toolbar-icon-btn.is-topmost {
+  color: var(--purple);
+  background: rgba(168, 85, 247, 0.14);
+}
+
+.toolbar-icon-btn.is-topmost:hover {
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.2);
+}
+
 .toolbar-icon-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;

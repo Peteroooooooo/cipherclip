@@ -35,8 +35,10 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.datas,
     [],
-    exclude_binaries=True,
+    exclude_binaries=False,
     name="CipherClip",
     icon=str(project_root / "assets" / "cipherclip.ico"),
     debug=False,
@@ -44,15 +46,4 @@ exe = EXE(
     strip=False,
     upx=False,
     console=False,
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=False,
-    upx_exclude=[],
-    name="CipherClip",
 )

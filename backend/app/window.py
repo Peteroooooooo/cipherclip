@@ -39,6 +39,7 @@ class AppWindowController:
         dev_mode: bool,
         start_hidden: bool = False,
         close_to_tray_provider=lambda: True,
+        set_on_top_callback=None,
     ) -> None:
         self.project_root = project_root
         self.bridge = bridge
@@ -46,10 +47,12 @@ class AppWindowController:
         self.dev_mode = dev_mode
         self.start_hidden = start_hidden
         self.close_to_tray_provider = close_to_tray_provider
+        self.set_on_top_callback = set_window_on_top if set_on_top_callback is None else set_on_top_callback
         self.window: webview.Window | None = None
         self._is_loaded = False
         self._allow_close = False
         self._is_hidden = start_hidden
+        self._is_always_on_top = False
 
     def create(self) -> webview.Window:
         entry = resolve_frontend_entry(project_root=self.project_root, dev_mode=self.dev_mode)
@@ -63,12 +66,15 @@ class AppWindowController:
             height=760,
             min_size=(420, 560),
             hidden=self.start_hidden,
+            on_top=self._is_always_on_top,
             text_select=True,
         )
         self.window.events.loaded += self._handle_loaded
         self.window.events.closing += self._handle_closing
         self.bridge._bind_hide_window(self.hide)
         self.bridge._bind_pick_storage_path(self.pick_storage_path)
+        self.bridge._bind_toggle_always_on_top(self.toggle_always_on_top)
+        self.bridge._bind_is_always_on_top(lambda: self.is_always_on_top)
         return self.window
 
     def show(self) -> None:
@@ -76,6 +82,7 @@ class AppWindowController:
             return
         self.window.show()
         self.window.restore()
+        self._apply_always_on_top()
         self._is_hidden = False
 
     def hide(self) -> None:
@@ -99,6 +106,14 @@ class AppWindowController:
     @property
     def is_hidden(self) -> bool:
         return self._is_hidden
+
+    @property
+    def is_always_on_top(self) -> bool:
+        return self._is_always_on_top
+
+    def toggle_always_on_top(self) -> None:
+        self._is_always_on_top = not self._is_always_on_top
+        self._apply_always_on_top()
 
     def dispatch_snapshot(self, snapshot: dict[str, object]) -> None:
         if not self._is_loaded or self.window is None:
@@ -132,3 +147,40 @@ class AppWindowController:
         if not selection:
             return None
         return str(Path(selection[0]))
+
+    def _apply_always_on_top(self) -> None:
+        if self.window is None:
+            return
+        self.set_on_top_callback(self.window, self._is_always_on_top)
+
+
+def set_window_on_top(window: webview.Window, enabled: bool) -> None:
+    native_window = getattr(window, "native", None)
+
+    def apply_topmost() -> None:
+        if hasattr(type(window), "on_top"):
+            window.on_top = enabled
+            return
+        if hasattr(window, "on_top"):
+            setattr(window, "on_top", enabled)
+            return
+        if native_window is not None:
+            native_window.TopMost = enabled
+
+    if native_window is None:
+        apply_topmost()
+        return
+
+    if getattr(native_window, "InvokeRequired", False):
+        try:
+            from System import Action
+        except ModuleNotFoundError:
+            import clr
+
+            clr.AddReference("System.Windows.Forms")
+            from System import Action
+
+        native_window.Invoke(Action(apply_topmost))
+        return
+
+    apply_topmost()

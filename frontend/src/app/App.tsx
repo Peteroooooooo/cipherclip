@@ -73,6 +73,7 @@ function App() {
       />
     ) : (
       <QuickPanelView
+        isAlwaysOnTop={snapshot.isAlwaysOnTop}
         shortcuts={snapshot.settings.shortcuts}
         isRecordingPaused={snapshot.isRecordingPaused}
         onClearHistory={() => void handleClearHistory()}
@@ -82,6 +83,7 @@ function App() {
         onOpenSettings={() => syncSnapshot(desktopApi.setView('settings'))}
         onPastePlainText={(recordId: string) => syncSnapshot(desktopApi.pastePlainText(recordId))}
         onPrimaryAction={(recordId: string) => syncSnapshot(desktopApi.triggerPrimaryAction(recordId))}
+        onToggleAlwaysOnTop={() => syncSnapshot(desktopApi.toggleAlwaysOnTop())}
         onTogglePause={() => syncSnapshot(desktopApi.togglePause())}
         onTogglePin={(recordId: string) => syncSnapshot(desktopApi.togglePin(recordId))}
         pinnedRecords={snapshot.pinnedRecords}

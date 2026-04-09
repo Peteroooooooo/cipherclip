@@ -4,6 +4,7 @@ type WindowApi = {
   get_app_state: () => Promise<AppSnapshot>
   set_view: (view: AppView) => Promise<AppSnapshot>
   toggle_pause: () => Promise<AppSnapshot>
+  toggle_always_on_top: () => Promise<AppSnapshot>
   toggle_pin: (recordId: string) => Promise<AppSnapshot>
   delete_record: (recordId: string) => Promise<AppSnapshot>
   undo_delete: () => Promise<AppSnapshot>
@@ -288,6 +289,7 @@ function createSnapshot(): AppSnapshot {
   return {
     view: 'panel',
     isRecordingPaused: false,
+    isAlwaysOnTop: false,
     pinnedRecords: records.filter((record) => record.pinned),
     recentRecords: records.filter((record) => !record.pinned),
     settings: normalizeSettings(defaultSettings),
@@ -362,6 +364,11 @@ function fallbackApi(): WindowApi {
           tone: draft.isRecordingPaused ? 'danger' : 'success',
           actionKind: null,
         })
+      })
+    },
+    async toggle_always_on_top() {
+      return applyFallbackMutation((draft) => {
+        draft.isAlwaysOnTop = !draft.isAlwaysOnTop
       })
     },
     async toggle_pin(recordId) {
@@ -546,6 +553,9 @@ export const desktopApi = {
   },
   togglePause() {
     return getWindowApi().toggle_pause()
+  },
+  toggleAlwaysOnTop() {
+    return getWindowApi().toggle_always_on_top()
   },
   togglePin(recordId: string) {
     return getWindowApi().toggle_pin(recordId)

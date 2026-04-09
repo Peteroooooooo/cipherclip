@@ -1,0 +1,18 @@
+{
+  "launchOnStartup": true,
+  "closeToTray": true,
+  "followSystemTheme": true,
+  "recordText": true,
+  "recordRichText": true,
+  "historyLimit": 25,
+  "recordImages": true,
+  "recordFiles": true,
+  "storagePath": "tmp-debug-data",
+  "shortcuts": {
+    "togglePanel": "Alt + Space",
+    "primaryAction": "Enter",
+    "pastePlainText": "Ctrl + Shift + V",
+    "togglePin": "Ctrl + P",
+    "deleteRecord": "Delete"
+  }
+}

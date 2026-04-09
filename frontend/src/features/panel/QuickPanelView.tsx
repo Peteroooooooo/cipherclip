@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
-import { Settings } from 'lucide-react'
+import { Pin, Settings } from 'lucide-react'
 import { matchesShortcut } from '../../app/shortcuts'
 import type { HistoryRecord, ShortcutBindings } from '../../app/types'
 import { HistoryCard } from '../history/HistoryCard'
@@ -32,11 +32,13 @@ function CipherClipLogo() {
 }
 
 interface QuickPanelViewProps {
+  isAlwaysOnTop: boolean
   isRecordingPaused: boolean
   pinnedRecords: HistoryRecord[]
   recentRecords: HistoryRecord[]
   shortcuts: ShortcutBindings
   onOpenSettings: () => void
+  onToggleAlwaysOnTop: () => void
   onTogglePause: () => void
   onTogglePin: (recordId: string) => void
   onDelete: (recordId: string) => void
@@ -53,11 +55,13 @@ function matchesQuery(record: HistoryRecord, query: string) {
 }
 
 export function QuickPanelView({
+  isAlwaysOnTop,
   isRecordingPaused,
   pinnedRecords,
   recentRecords,
   shortcuts,
   onOpenSettings,
+  onToggleAlwaysOnTop,
   onTogglePause,
   onTogglePin,
   onDelete,
@@ -159,6 +163,17 @@ export function QuickPanelView({
           </div>
 
           <div className="toolbar-right">
+            <button
+              aria-label="Always on top"
+              aria-pressed={isAlwaysOnTop}
+              className={`toolbar-icon-btn ${isAlwaysOnTop ? 'is-topmost' : ''}`}
+              onClick={onToggleAlwaysOnTop}
+              title={isAlwaysOnTop ? 'Disable always on top' : 'Enable always on top'}
+              type="button"
+            >
+              <Pin size={15} />
+            </button>
+
             <button
               className={`rec-toggle ${isRecordingPaused ? 'is-paused' : ''}`}
               onClick={onTogglePause}

@@ -4,6 +4,20 @@
 
 一个 Windows 剪贴板历史工具，基于 Python、pywebview、pystray、React 和 Vite 构建。
 
+**[在线体验 Demo](https://peteroooooooo.github.io/cipherclip/)** · **[下载最新版](https://github.com/Peteroooooooo/cipherclip/releases/latest)**
+
+<p align="center"><img src="assets/demo-panel.png" alt="CipherClip 面板：标题栏的玻璃胶囊、固定与最近的剪贴板记录，悬停的那一行右侧是操作胶囊" width="400"></p>
+
+在线 Demo 就是真实的面板界面，只是用示例数据代替了你的剪贴板：可以切换筛选、搜索、固定、删除，体验悬停效果和设置页。真正读写剪贴板、粘贴回原窗口需要下载 Windows 版。
+
+## 新版本亮点
+
+- **液态玻璃界面（1.1）**：面板是一块磨砂玻璃，背后是实时模糊的桌面；标题栏和每行的操作按钮是带折射边缘的玻璃胶囊，按钮之间有一颗液态玻璃小透镜跟着鼠标滑动。
+- **磁吸胶囊（1.2）**：鼠标悬停时胶囊弹性放大、带回弹地跟着鼠标微移，鼠标下方出现镜面高光，旁边的胶囊会让位；按下时会压扁一下。
+- **来源应用图标（1.1）**：每条记录显示复制它的那个应用的图标。
+- **自动去重（1.2）**：同一段文字再次复制，不会新增记录，而是把原来那条移到最前面。浏览器每次复制套的格式不同，纯文本和带格式的版本也算同一条。
+- **更省资源（1.1）**：面板隐藏在托盘时几乎不占 CPU，第一次呼出也不再卡顿。
+
 ## 功能与使用
 
 ### 快速上手
@@ -109,3 +123,7 @@ Set-Location ..
 - `dist\CipherClip.exe`
 
 实时毛玻璃（live glass）需要的原生组件由 `scripts\build-native.ps1` 编译，需要 Visual Studio Build Tools（C++ 工作负载）和 Windows SDK；没有它们时打包仍会成功，只是发布版改用截图式玻璃。
+
+### 在线 Demo
+
+前端在普通浏览器里运行时会使用示例数据（`frontend/src/app/pywebview.ts`）。每次 `frontend/` 的改动推送到 `main`，`.github/workflows/demo.yml` 会重新打包并发布到 GitHub Pages。本地预览：在 `frontend` 目录下运行 `npm run build`，再运行 `npm run preview`。

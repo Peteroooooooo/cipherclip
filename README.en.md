@@ -4,6 +4,20 @@
 
 A Windows clipboard history tool built with Python, pywebview, pystray, React, and Vite.
 
+**[Try the live demo](https://peteroooooooo.github.io/cipherclip/)** · **[Download the latest release](https://github.com/Peteroooooooo/cipherclip/releases/latest)**
+
+<p align="center"><img src="assets/demo-panel.png" alt="The CipherClip panel: glass capsules in the title bar, pinned and recent clips, and the action capsule on the hovered row" width="400"></p>
+
+The live demo is the real panel running on sample clips instead of your clipboard: filter, search, pin, delete, try the hover effects and open Settings. Reading the clipboard and pasting back into your apps needs the Windows app.
+
+## What's new
+
+- **Liquid glass interface (1.1)**: the panel is a pane of frosted glass over a live-blurred desktop; the title bar and each row's actions are glass capsules with refracting edges, with a drop of liquid glass that slides between the buttons under the pointer.
+- **Magnetic capsules (1.2)**: hovered, a capsule swells, follows the pointer on a spring and catches a specular light, while its neighbours step back; pressing it squeezes it.
+- **Source app icons (1.1)**: every clip shows the icon of the app it was copied from.
+- **No duplicates (1.2)**: copying the same text again moves the existing clip to the top instead of adding a new one, even when a browser wraps it in different formatting or it arrives once as plain text and once formatted.
+- **Lighter on resources (1.1)**: almost no CPU while the panel waits in the tray, and no stutter on the first summon.
+
 ## Features and Usage
 
 ### Quick start
@@ -109,3 +123,7 @@ Output:
 - `dist\CipherClip.exe`
 
 The native part of the live glass is compiled by `scripts\build-native.ps1`, which needs Visual Studio Build Tools (C++ workload) and the Windows SDK; without them the build still succeeds and the release uses snapshot glass instead.
+
+### Live demo
+
+In a plain browser the frontend runs on sample clips (`frontend/src/app/pywebview.ts`). Every push to `main` that touches `frontend/` rebuilds it and publishes it to GitHub Pages through `.github/workflows/demo.yml`. To preview locally, run `npm run build` and then `npm run preview` in `frontend`.

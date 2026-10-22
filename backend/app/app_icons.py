@@ -23,7 +23,7 @@ else:  # pragma: no cover - non-Windows guard
 ICON_SIZE = 64
 # Longer descriptions are usually a sentence ("Microsoft Office component ..."), not a name.
 MAX_NAME_LENGTH = 32
-SELF_NAME = "CipherClip"
+SELF_NAME = "ClipDeck"
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 
 

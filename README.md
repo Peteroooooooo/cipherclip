@@ -1,16 +1,16 @@
 [English](README.en.md)
 
-# CipherClip
+# ClipDeck
 
-Windows 剪贴板历史工具，液态玻璃界面。
+好看又好用的 Windows 剪贴板。
 
-**[在线 Demo](https://peteroooooooo.github.io/cipherclip/)** · **[下载](https://github.com/Peteroooooooo/cipherclip/releases/latest)**
+**[在线 Demo](https://peteroooooooo.github.io/clipdeck/)** · **[下载](https://github.com/Peteroooooooo/clipdeck/releases/latest)**
 
-<p align="center"><img src="assets/demo-panel.png" alt="CipherClip 面板" width="400"></p>
+<p align="center"><img src="assets/demo-panel.png" alt="ClipDeck 面板" width="400"></p>
 
 ## 使用
 
-1. 下载 `CipherClip.zip`，解压后把 `CipherClip.exe` 放进一个固定文件夹，双击运行。
+1. 下载 `ClipDeck.zip`，解压后把 `ClipDeck.exe` 放进一个固定文件夹，双击运行。
 2. 按 `Alt + Space` 打开面板，选中一条记录按 `Enter`，就会粘贴回原来的输入框。
 
 | 快捷键 | 作用 |
@@ -32,4 +32,4 @@ cd frontend; npm install; npm run build; cd ..
 .\.venv\Scripts\python backend\main.py
 ```
 
-打包：`.\scripts\build-release.ps1`，输出 `dist\CipherClip.exe`。
+打包：`.\scripts\build-release.ps1`，输出 `dist\ClipDeck.exe`。

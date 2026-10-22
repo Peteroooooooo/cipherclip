@@ -46,16 +46,13 @@ def test_tray_controller_uses_localized_title_and_brand_icon() -> None:
 
     assert tray.icon.title == TRAY_TITLE
 
+    # The ClipDeck icon: a graphite tile, transparent corners, a near-white front card in the middle.
     image = tray._create_icon()
-    pixels = list(image.getchannel("R").tobytes())
-    greens = list(image.getchannel("G").tobytes())
-    blues = list(image.getchannel("B").tobytes())
-    color_triplets = list(zip(pixels, greens, blues))
-    has_cyan = any(red < 40 and green > 200 and blue > 220 for red, green, blue in color_triplets)
-    has_purple = any(red > 120 and blue > 180 for red, green, blue in color_triplets)
-
-    assert has_cyan is True
-    assert has_purple is True
+    assert image.size == (64, 64)
+    assert image.getpixel((0, 0))[3] == 0
+    red, green, blue, alpha = image.getpixel((32, 44))
+    assert alpha == 255 and min(red, green, blue) > 230
+    assert max(image.getpixel((32, 60))[:3]) < 80
 
 
 def test_tray_clear_all_history_requires_confirmation() -> None:

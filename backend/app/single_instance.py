@@ -34,8 +34,8 @@ class WindowsSingleInstanceManager:
     def __init__(
         self,
         *,
-        mutex_name: str = "Local\\CipherClip.SingleInstance",
-        event_name: str = "Local\\CipherClip.Activate",
+        mutex_name: str = "Local\\ClipDeck.SingleInstance",
+        event_name: str = "Local\\ClipDeck.Activate",
         kernel32=None,
         is_windows: bool | None = None,
         wait_timeout_ms: int = 100,

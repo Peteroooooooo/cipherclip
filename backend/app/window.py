@@ -92,7 +92,7 @@ class AppWindowController:
         url = entry if isinstance(entry, str) and entry.startswith("http") else Path(str(entry)).resolve().as_uri()
 
         self.window = webview.create_window(
-            title="CipherClip",
+            title="ClipDeck",
             url=url,
             js_api=self.bridge,
             # The page panel is 440x640; the extra WINDOW_SHADOW_MARGIN on each side is transparent
@@ -133,7 +133,7 @@ class AppWindowController:
             # Lets the page play its "materialise" animation each time the panel is summoned, and
             # wakes its animations (see hide).
             self._visibility_seq += 1
-            self._dispatch_event("cipherclip:reveal", {"seq": self._visibility_seq})
+            self._dispatch_event("clipdeck:reveal", {"seq": self._visibility_seq})
             # The desktop grab (~0.1s) runs after showing so summoning never waits on it; the
             # panel excludes itself from the capture and the fresh glass lands during the fade-in.
             self._send_backdrop()
@@ -184,7 +184,7 @@ class AppWindowController:
         if not self._is_loaded or self._glass is None:
             return
         self._dispatch_event(
-            "cipherclip:glass",
+            "clipdeck:glass",
             {
                 "mode": self._glass.mode,
                 "liveAvailable": self._glass.live_available,
@@ -200,7 +200,7 @@ class AppWindowController:
             return
         payload = self.backdrop_capture(self.window, self._appearance)
         if payload is not None:
-            self._dispatch_event("cipherclip:backdrop", payload)
+            self._dispatch_event("clipdeck:backdrop", payload)
 
     def begin_drag(self, grab_x: float, grab_y: float) -> None:
         """Drag the window from the page's title area; elastic unless animations are off."""
@@ -224,7 +224,7 @@ class AppWindowController:
             while True:
                 origin = window_origin(self.window)
                 if origin is not None and self._is_loaded:
-                    self._dispatch_event("cipherclip:moved", window_position_payload(origin))
+                    self._dispatch_event("clipdeck:moved", window_position_payload(origin))
                 with self._move_lock:
                     if not self._move_dirty:
                         self._move_in_flight = False
@@ -254,7 +254,7 @@ class AppWindowController:
             self._visibility_seq += 1
             seq = self._visibility_seq
             threading.Thread(
-                target=self._dispatch_event, args=("cipherclip:sleep", {"seq": seq}), daemon=True
+                target=self._dispatch_event, args=("clipdeck:sleep", {"seq": seq}), daemon=True
             ).start()
 
     def toggle_visibility(self) -> None:
@@ -335,7 +335,7 @@ class AppWindowController:
         # Started in the tray: the page sleeps (animations paused), then renders once in the
         # background, so the first summon is as quick as every later one.
         self._visibility_seq += 1
-        self._dispatch_event("cipherclip:sleep", {"seq": self._visibility_seq})
+        self._dispatch_event("clipdeck:sleep", {"seq": self._visibility_seq})
         self.warm_webview(self.window)
 
     def _handle_closing(self) -> bool | None:
@@ -406,7 +406,7 @@ def warm_hidden_webview(window: webview.Window) -> bool:
     stuttering reveal); every later summon is smooth, because after one show/hide WebView2 keeps
     the page "visible" behind the hidden window. This puts the page in that same state from the
     start, by marking the WebView2 controller visible without showing the window. The page keeps
-    its animations paused meanwhile (cipherclip:sleep), so it costs nothing while it waits.
+    its animations paused meanwhile (clipdeck:sleep), so it costs nothing while it waits.
     """
     form = getattr(window, "native", None)
     control = getattr(getattr(form, "browser", None), "webview", None)

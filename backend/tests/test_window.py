@@ -9,7 +9,7 @@ from backend.app.window import resolve_runtime_mode
 from backend.app.window import resolve_frontend_entry
 from backend.app.window import set_window_on_top
 
-TEST_PROJECT_ROOT = Path("C:/workspace/CipherClip")
+TEST_PROJECT_ROOT = Path("C:/workspace/ClipDeck")
 
 
 def test_resolve_frontend_entry_prefers_dev_server_and_falls_back_to_dist():
@@ -140,8 +140,8 @@ def test_hiding_puts_the_page_to_sleep_and_showing_wakes_it_in_order(monkeypatch
         thread.join(timeout=2)
 
     assert len(scripts) == 2
-    assert "'cipherclip:reveal'" in scripts[0] and '"seq": 1' in scripts[0]
-    assert "'cipherclip:sleep'" in scripts[1] and '"seq": 2' in scripts[1]
+    assert "'clipdeck:reveal'" in scripts[0] and '"seq": 1' in scripts[0]
+    assert "'clipdeck:sleep'" in scripts[1] and '"seq": 2' in scripts[1]
 
 
 def test_page_loaded_in_the_tray_sleeps_then_renders_in_the_background():
@@ -158,7 +158,7 @@ def test_page_loaded_in_the_tray_sleeps_then_renders_in_the_background():
 
     controller._handle_loaded()
 
-    assert "'cipherclip:sleep'" in order[-2] and '"seq": 1' in order[-2]
+    assert "'clipdeck:sleep'" in order[-2] and '"seq": 1' in order[-2]
     assert order[-1] == "warm"
 
 
@@ -179,7 +179,7 @@ def test_page_loaded_on_screen_is_not_put_to_sleep():
     controller._handle_loaded()
 
     assert warmed == []
-    assert not any("cipherclip:sleep" in script for script in scripts)
+    assert not any("clipdeck:sleep" in script for script in scripts)
 
 
 def test_window_controller_can_toggle_always_on_top_for_current_run():
@@ -333,7 +333,7 @@ def test_showing_a_hidden_loaded_window_asks_the_page_to_play_its_reveal(monkeyp
     controller.show()
 
     assert len(scripts) == 1
-    assert "cipherclip:reveal" in scripts[0]
+    assert "clipdeck:reveal" in scripts[0]
 
 
 def test_backdrop_payload_carries_image_and_alignment_in_physical_pixels():
@@ -369,7 +369,7 @@ def test_showing_a_hidden_window_reveals_it_first_then_sends_the_desktop_backdro
 
     controller.show()
 
-    assert events == ["show", "cipherclip:reveal", "cipherclip:backdrop"]
+    assert events == ["show", "clipdeck:reveal", "clipdeck:backdrop"]
 
 
 def test_appearance_settings_fill_defaults_and_clamp_hand_edited_values():
@@ -480,8 +480,8 @@ def test_switching_glass_source_toggles_the_live_visual_and_tells_the_page():
 
     assert ("live", False) in calls
     assert ("radius", 30.0) in calls
-    assert any("cipherclip:glass" in script and '"snapshot"' in script for script in scripts)
-    assert any("cipherclip:backdrop" in script for script in scripts)
+    assert any("clipdeck:glass" in script and '"snapshot"' in script for script in scripts)
+    assert any("clipdeck:backdrop" in script for script in scripts)
 
 
 def test_title_drag_is_elastic_unless_animations_are_off(monkeypatch):
@@ -519,7 +519,7 @@ def test_moves_are_only_sent_to_the_page_for_snapshot_glass(monkeypatch):
 
     controller._glass = SimpleNamespace(mode="snapshot")
     controller._handle_moved()
-    assert len(scripts) == 1 and "cipherclip:moved" in scripts[0]
+    assert len(scripts) == 1 and "clipdeck:moved" in scripts[0]
 
 
 def test_backdrop_blur_fades_the_live_glass_down_to_a_clear_window():

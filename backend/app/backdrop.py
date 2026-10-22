@@ -197,8 +197,8 @@ def live_backdrop_dll_path() -> Path:
 
     bundle_root = getattr(sys, "_MEIPASS", None)
     if bundle_root is not None:
-        return Path(bundle_root) / "native" / "cipherclip_backdrop.dll"
-    return Path(__file__).resolve().parents[1] / "native" / "bin" / "cipherclip_backdrop.dll"
+        return Path(bundle_root) / "native" / "clipdeck_backdrop.dll"
+    return Path(__file__).resolve().parents[1] / "native" / "bin" / "clipdeck_backdrop.dll"
 
 
 def _load_live_backdrop():

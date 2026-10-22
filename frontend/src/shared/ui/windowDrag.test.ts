@@ -15,7 +15,7 @@ describe('window drag', () => {
   test('hands a press on the drag region to the backend in physical pixels', () => {
     const begin = vi.spyOn(desktopApi, 'beginWindowDrag').mockResolvedValue(undefined)
     vi.spyOn(window, 'devicePixelRatio', 'get').mockReturnValue(1.5)
-    document.body.innerHTML = '<div class="window-drag-region"><h1>CipherClip</h1></div><button>Other</button>'
+    document.body.innerHTML = '<div class="window-drag-region"><h1>ClipDeck</h1></div><button>Other</button>'
     uninstall = installWindowDrag()
 
     const title = document.querySelector('h1')!

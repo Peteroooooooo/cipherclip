@@ -369,7 +369,7 @@ void DrawPendingFrame() {
 
 // ---------------------------------------------------------------- capture (worker thread)
 
-// The capture runs in cipherclip_capture.exe (capture_helper.cpp): inside this process the
+// The capture runs in clipdeck_capture.exe (capture_helper.cpp): inside this process the
 // Magnification API still sees this window's own composition visuals, so the glass would capture
 // itself and blur and dim its own output again on every frame. Requests and pixels go through a
 // named shared-memory block.
@@ -418,7 +418,7 @@ public:
         if (slash == nullptr) {
             return false;
         }
-        wcscpy_s(slash + 1, MAX_PATH - (slash + 1 - path), L"cipherclip_capture.exe");
+        wcscpy_s(slash + 1, MAX_PATH - (slash + 1 - path), L"clipdeck_capture.exe");
         wchar_t commandLine[MAX_PATH + 32];
         swprintf(commandLine, MAX_PATH + 32, L"\"%ls\" %lu", path, static_cast<unsigned long>(self));
         STARTUPINFOW startup{sizeof(startup)};

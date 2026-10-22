@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 import ctypes
-import math
 
 import pystray
-from PIL import Image, ImageDraw
+from PIL import Image
 
+from .brand_icon import draw_icon
 from .state import AppState
 
-APP_NAME = "CipherClip"
-TRAY_TITLE = "CipherClip 剪贴板历史"
+APP_NAME = "ClipDeck"
+TRAY_TITLE = "ClipDeck 剪贴板历史"
 
 
 def menu_labels(*, is_recording_paused: bool) -> list[str]:
@@ -80,15 +80,7 @@ class TrayController:
 
     @staticmethod
     def _create_icon() -> Image.Image:
-        image = Image.new("RGBA", (64, 64), (10, 10, 12, 0))
-        draw = ImageDraw.Draw(image)
-        draw.rounded_rectangle((10, 6, 50, 58), radius=12, fill=(22, 22, 26, 235), outline=(255, 255, 255, 38), width=1)
-        draw.polygon([(36, 6), (50, 20), (36, 20)], fill=(32, 32, 38, 240), outline=(255, 255, 255, 28))
-        draw.line((18, 24, 34, 24), fill=(0, 240, 255, 220), width=4)
-        draw.line((18, 31, 30, 31), fill=(0, 240, 255, 150), width=4)
-        draw.line((18, 38, 26, 38), fill=(0, 240, 255, 96), width=4)
-        _draw_rotated_pen(draw, center=(43, 32), angle_deg=25)
-        return image
+        return draw_icon(64)
 
     def _handle_open_history(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
         self.state.set_view("panel")
@@ -110,29 +102,3 @@ class TrayController:
         self.exit_app()
 
 
-def _draw_rotated_pen(draw: ImageDraw.ImageDraw, *, center: tuple[float, float], angle_deg: float) -> None:
-    body = [(0, -12), (4, -12), (4, 8), (0, 8)]
-    cap = [(0, -12), (4, -12), (4, -8), (0, -8)]
-    tip = [(0, 8), (2, 14), (4, 8)]
-
-    draw.polygon(_rotate_polygon(body, center=center, angle_deg=angle_deg), fill=(168, 85, 247, 235))
-    draw.polygon(_rotate_polygon(cap, center=center, angle_deg=angle_deg), fill=(192, 132, 252, 200))
-    draw.polygon(_rotate_polygon(tip, center=center, angle_deg=angle_deg), fill=(168, 85, 247, 180))
-
-
-def _rotate_polygon(
-    points: list[tuple[float, float]],
-    *,
-    center: tuple[float, float],
-    angle_deg: float,
-) -> list[tuple[float, float]]:
-    angle = math.radians(angle_deg)
-    cos_value = math.cos(angle)
-    sin_value = math.sin(angle)
-    center_x, center_y = center
-    rotated: list[tuple[float, float]] = []
-    for point_x, point_y in points:
-        rotated_x = center_x + (point_x * cos_value) - (point_y * sin_value)
-        rotated_y = center_y + (point_x * sin_value) + (point_y * cos_value)
-        rotated.append((rotated_x, rotated_y))
-    return rotated

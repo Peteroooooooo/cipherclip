@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptRoot
 $python = Join-Path $projectRoot ".venv\Scripts\python.exe"
-$legacyOnedirOutput = Join-Path $projectRoot "dist\CipherClip"
+$legacyOnedirOutput = Join-Path $projectRoot "dist\ClipDeck"
 
 if (-not (Test-Path $python)) {
     throw "Python virtual environment not found at $python"
@@ -36,10 +36,10 @@ catch {
 Write-Host "Installing build dependencies..."
 & $python -m pip install -r (Join-Path $projectRoot "backend\requirements.txt") -r (Join-Path $projectRoot "backend\requirements-build.txt")
 
-Write-Host "Packaging CipherClip..."
+Write-Host "Packaging ClipDeck..."
 & $python -m PyInstaller --noconfirm --clean `
     --distpath (Join-Path $projectRoot "dist") `
     --workpath (Join-Path $projectRoot "build") `
-    (Join-Path $projectRoot "CipherClip.spec")
+    (Join-Path $projectRoot "ClipDeck.spec")
 
-Write-Host "Build complete. Output: $(Join-Path $projectRoot 'dist\CipherClip.exe')"
+Write-Host "Build complete. Output: $(Join-Path $projectRoot 'dist\ClipDeck.exe')"

@@ -2,8 +2,8 @@
  * Desktop glass backdrop.
  *
  * The native window is fully transparent, so the backend sends a pre-blurred snapshot of the
- * monitor behind it (`cipherclip:backdrop`) and the window position on every move
- * (`cipherclip:moved`). Both arrive in physical pixels; this module turns them into CSS
+ * monitor behind it (`clipdeck:backdrop`) and the window position on every move
+ * (`clipdeck:moved`). Both arrive in physical pixels; this module turns them into CSS
  * variables that `.glass-backdrop` uses to line the snapshot up with the real desktop.
  */
 
@@ -77,12 +77,12 @@ export function installDesktopBackdrop(root: HTMLElement = document.documentElem
     root.classList.toggle('glass-live', detail?.mode === 'live')
   }
 
-  window.addEventListener('cipherclip:backdrop', handleBackdrop)
-  window.addEventListener('cipherclip:moved', handleMoved)
-  window.addEventListener('cipherclip:glass', handleGlass)
+  window.addEventListener('clipdeck:backdrop', handleBackdrop)
+  window.addEventListener('clipdeck:moved', handleMoved)
+  window.addEventListener('clipdeck:glass', handleGlass)
   return () => {
-    window.removeEventListener('cipherclip:backdrop', handleBackdrop)
-    window.removeEventListener('cipherclip:moved', handleMoved)
-    window.removeEventListener('cipherclip:glass', handleGlass)
+    window.removeEventListener('clipdeck:backdrop', handleBackdrop)
+    window.removeEventListener('clipdeck:moved', handleMoved)
+    window.removeEventListener('clipdeck:glass', handleGlass)
   }
 }

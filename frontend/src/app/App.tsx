@@ -96,8 +96,8 @@ function App() {
         filtered: Boolean(detail?.filtered),
       })
     }
-    window.addEventListener('cipherclip:glass', handleGlass)
-    return () => window.removeEventListener('cipherclip:glass', handleGlass)
+    window.addEventListener('clipdeck:glass', handleGlass)
+    return () => window.removeEventListener('clipdeck:glass', handleGlass)
   }, [])
 
   const endAppearancePreview = useCallback(() => {
@@ -118,8 +118,8 @@ function App() {
   useEffect(() => {
     // Waking the page from its sleep in the tray is panelSleep.ts's.
     const handleReveal = () => playReveal(frameRef.current)
-    window.addEventListener('cipherclip:reveal', handleReveal)
-    return () => window.removeEventListener('cipherclip:reveal', handleReveal)
+    window.addEventListener('clipdeck:reveal', handleReveal)
+    return () => window.removeEventListener('clipdeck:reveal', handleReveal)
   }, [])
 
   useEffect(() => {
@@ -179,7 +179,7 @@ function App() {
   if (!snapshot) {
     return (
       <main className="app-shell">
-        <div className="app-loading">正在初始化 CipherClip…</div>
+        <div className="app-loading">正在初始化 ClipDeck…</div>
       </main>
     )
   }

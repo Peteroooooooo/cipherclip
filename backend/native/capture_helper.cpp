@@ -4,7 +4,7 @@
 // process it still sees the app's composition visuals (the filtered glass itself), so this tiny
 // process grabs on request and hands the pixels over through shared memory.
 //
-// Usage: cipherclip_capture.exe <parent process id>. Exits when the parent goes away.
+// Usage: clipdeck_capture.exe <parent process id>. Exits when the parent goes away.
 
 #define NOMINMAX
 #include <windows.h>

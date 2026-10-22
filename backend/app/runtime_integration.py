@@ -16,7 +16,10 @@ class NoopStartupManager:
 class WindowsStartupManager:
     RUN_KEY_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
-    def __init__(self, *, app_name: str = "CipherClip") -> None:
+    # Names the app was registered under before; their entries are removed so it never starts twice.
+    LEGACY_NAMES = ("CipherClip",)
+
+    def __init__(self, *, app_name: str = "ClipDeck") -> None:
         self.app_name = app_name
         self._is_windows = os.name == "nt" and winreg is not None
 
@@ -30,6 +33,11 @@ class WindowsStartupManager:
             0,
             winreg.KEY_SET_VALUE,
         ) as run_key:
+            for legacy_name in self.LEGACY_NAMES:
+                try:
+                    winreg.DeleteValue(run_key, legacy_name)
+                except FileNotFoundError:
+                    pass
             if enabled:
                 winreg.SetValueEx(run_key, self.app_name, 0, winreg.REG_SZ, command)
                 return

@@ -1,6 +1,6 @@
 // While the panel is hidden in the tray, WebView2 still treats the page as visible and would keep
-// drawing every animation frame for nobody: the backend sends "cipherclip:sleep" when it hides the
-// window and "cipherclip:reveal" when it shows it, and html.is-asleep pauses all animations in
+// drawing every animation frame for nobody: the backend sends "clipdeck:sleep" when it hides the
+// window and "clipdeck:reveal" when it shows it, and html.is-asleep pauses all animations in
 // between (index.css). Installed before React, so a sleep sent while the app is still starting up
 // is not missed.
 //
@@ -23,10 +23,10 @@ export function installPanelSleep() {
   const handleReveal = (event: Event) => {
     if (isCurrent(event)) root.classList.remove('is-asleep')
   }
-  window.addEventListener('cipherclip:sleep', handleSleep)
-  window.addEventListener('cipherclip:reveal', handleReveal)
+  window.addEventListener('clipdeck:sleep', handleSleep)
+  window.addEventListener('clipdeck:reveal', handleReveal)
   return () => {
-    window.removeEventListener('cipherclip:sleep', handleSleep)
-    window.removeEventListener('cipherclip:reveal', handleReveal)
+    window.removeEventListener('clipdeck:sleep', handleSleep)
+    window.removeEventListener('clipdeck:reveal', handleReveal)
   }
 }

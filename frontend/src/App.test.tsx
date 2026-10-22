@@ -16,7 +16,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     // The search bar stays folded into the magnifier until it is asked for.
     expect(screen.queryByRole('textbox', { name: 'Search clipboard history' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Search' })).toHaveAttribute('aria-expanded', 'false')
@@ -54,7 +54,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     expect(screen.getByText('Build review notes for the quick panel and tray wiring.')).toBeInTheDocument()
     expect(screen.getByText('Sprint recap: finish tray wiring, validate pywebview bridge, update README.')).toBeInTheDocument()
 
@@ -74,7 +74,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     const [copyButton] = screen.getAllByRole('button', { name: 'Copy' })
     await user.click(copyButton)
@@ -89,7 +89,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     const initialCount = document.querySelectorAll('[data-record-id]').length
 
     const [deleteButton] = screen.getAllByRole('button', { name: 'Delete' })
@@ -107,7 +107,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     const [copyButton] = screen.getAllByRole('button', { name: 'Copy' })
     await user.click(copyButton)
@@ -125,7 +125,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     await user.hover(screen.getByRole('button', { name: 'ssh deploy@staging-box from Git Bash' }))
 
@@ -142,7 +142,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     await user.keyboard('{ArrowDown}')
 
@@ -155,7 +155,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     expect(screen.getByText('Build review notes for the quick panel and tray wiring.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
@@ -174,7 +174,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     expect(screen.getByText('Build review notes for the quick panel and tray wiring.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
@@ -191,7 +191,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     expect(screen.getByText('Build review notes for the quick panel and tray wiring.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Search' }))
@@ -209,7 +209,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     const initialCount = document.querySelectorAll('[data-record-id]').length
 
     await user.keyboard('ssh')
@@ -228,7 +228,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     const searchButton = screen.getByRole('button', { name: 'Search' })
 
     await user.click(searchButton)
@@ -247,7 +247,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     const glow = document.querySelector('.edge-glow')!
     expect(glow).not.toHaveClass('is-active')
 
@@ -272,7 +272,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
     expect(await screen.findByRole('heading', { name: 'Settings' })).toBeInTheDocument()
@@ -288,7 +288,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
     const deleteShortcutInput = screen.getByDisplayValue('Delete')
@@ -296,7 +296,7 @@ describe('App shell', () => {
     await user.type(deleteShortcutInput, 'Backspace')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     expect(screen.getByText('Build review notes for the quick panel and tray wiring.')).toBeInTheDocument()
     const initialCards = document.querySelectorAll('[data-record-id]')
 
@@ -312,7 +312,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
 
@@ -324,14 +324,14 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
 
-    expect(screen.getByText('%LOCALAPPDATA%\\CipherClip\\data')).toBeInTheDocument()
+    expect(screen.getByText('%LOCALAPPDATA%\\ClipDeck\\data')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Browse' }))
 
-    expect(screen.getByText('%LOCALAPPDATA%\\CipherClip\\selected-data')).toBeInTheDocument()
+    expect(screen.getByText('%LOCALAPPDATA%\\ClipDeck\\selected-data')).toBeInTheDocument()
   })
 
   test('renders storage path as a stacked preview block with a separate browse action', async () => {
@@ -339,7 +339,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
 
@@ -347,7 +347,7 @@ describe('App shell', () => {
     const storagePathStack = screen.getByTestId('storage-path-stack')
     const browseButton = screen.getByRole('button', { name: 'Browse' })
 
-    expect(storagePathBlock).toHaveTextContent('%LOCALAPPDATA%\\CipherClip\\data')
+    expect(storagePathBlock).toHaveTextContent('%LOCALAPPDATA%\\ClipDeck\\data')
     expect(storagePathStack).toContainElement(storagePathBlock)
     expect(storagePathStack).toContainElement(browseButton)
     expect(storagePathBlock.compareDocumentPosition(browseButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -358,7 +358,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
 
@@ -367,7 +367,7 @@ describe('App shell', () => {
     await user.type(historyLimitInput, '12')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
 
@@ -379,7 +379,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Settings' }))
 
@@ -398,7 +398,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     // The Dark Glass template is the default; Auto text picks white on it.
     expect(document.documentElement.dataset.theme).toBe('dark')
     // White 164 and black 13 are one 40.78% tint of grey 31.88.
@@ -472,12 +472,12 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Settings' }))
     await user.click(await screen.findByRole('button', { name: 'Liquid Effect' }))
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     expect(document.querySelector('.search-glass')).toHaveClass('is-plain')
   })
 
@@ -486,7 +486,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     const initialCount = document.querySelectorAll('[data-record-id]').length
     await user.click(screen.getByRole('button', { name: 'Search' }))
     expect(screen.getByPlaceholderText('Search clips')).toHaveFocus()
@@ -501,21 +501,21 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Settings' }))
     const toggleInput = screen.getByDisplayValue('Alt + Space')
     await user.clear(toggleInput)
     await user.type(toggleInput, 'Ctrl + K')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Settings' }))
     await user.click(await screen.findByRole('button', { name: 'Restore Defaults' }))
     expect(await screen.findByDisplayValue('Alt + Space')).toBeInTheDocument()
 
     const [cancelButton] = screen.getAllByRole('button', { name: 'Cancel' })
     await user.click(cancelButton)
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Settings' }))
     expect(await screen.findByDisplayValue('Ctrl + K')).toBeInTheDocument()
   })
@@ -525,7 +525,7 @@ describe('App shell', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
     const alwaysOnTopButton = screen.getByRole('button', { name: 'Always on top' })
     expect(alwaysOnTopButton).toHaveAttribute('aria-pressed', 'false')

@@ -386,7 +386,7 @@ export function QuickPanelView({
 
   return (
     <section className="panel-shell" onKeyDown={handleKeyDown} ref={panelRef} tabIndex={-1}>
-      <h1 className="sr-only">CipherClip</h1>
+      <h1 className="sr-only">ClipDeck</h1>
 
       {/* One row: pin · type filter · search / recording / settings / close. The gaps between
           them are where the window is dragged from. */}

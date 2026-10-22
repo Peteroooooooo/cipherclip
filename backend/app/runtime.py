@@ -6,7 +6,9 @@ from pathlib import Path
 from typing import Mapping
 
 
-APP_NAME = "CipherClip"
+APP_NAME = "ClipDeck"
+# The app's name before ClipDeck: its WebView2 data folder is moved over (see below).
+LEGACY_APP_NAME = "CipherClip"
 START_HIDDEN_FLAG = "--start-hidden"
 
 
@@ -39,8 +41,16 @@ def resolve_webview_data_path(*, env: Mapping[str, str] | None = None, app_name:
     cookies or site storage are kept); the clipboard history stays in the app's data folder.
     """
     environment = env if env is not None else os.environ
-    base = environment.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    return Path(base) / app_name / "WebView2"
+    base = Path(environment.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local"))
+    path = base / app_name / "WebView2"
+    # Kept from before the rename, so the shader cache (and with it a smooth first summon) survives.
+    legacy = base / LEGACY_APP_NAME
+    if app_name != LEGACY_APP_NAME and legacy.is_dir() and not path.parent.exists():
+        try:
+            legacy.rename(path.parent)
+        except OSError:
+            pass
+    return path
 
 
 def resolve_startup_command(

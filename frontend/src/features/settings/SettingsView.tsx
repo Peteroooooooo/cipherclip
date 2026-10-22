@@ -100,7 +100,7 @@ export function SettingsView({
         </button>
         <div className="window-drag-region settings-title">
           <h1>Settings</h1>
-          <p>Configure CipherClip behavior, shortcuts, and storage.</p>
+          <p>Configure ClipDeck behavior, shortcuts, and storage.</p>
         </div>
       </header>
 

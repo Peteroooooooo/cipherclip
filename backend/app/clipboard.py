@@ -36,7 +36,7 @@ class ClipboardCapture:
     file_paths: list[str] = field(default_factory=list)
     source_app: str | None = None
     source_glyph: str | None = None
-    # Full path of the source app's exe, for its icon (None when unknown or CipherClip itself).
+    # Full path of the source app's exe, for its icon (None when unknown or ClipDeck itself).
     source_exe: str | None = None
 
 

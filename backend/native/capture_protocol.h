@@ -26,5 +26,5 @@ struct SharedCapture {
 };
 
 inline void CaptureObjectName(wchar_t* out, DWORD appProcessId, wchar_t const* part) {
-    swprintf(out, 96, L"Local\\CipherClip.Capture.%lu.%ls", static_cast<unsigned long>(appProcessId), part);
+    swprintf(out, 96, L"Local\\ClipDeck.Capture.%lu.%ls", static_cast<unsigned long>(appProcessId), part);
 }

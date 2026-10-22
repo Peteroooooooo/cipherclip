@@ -45,7 +45,7 @@ const defaultSettings: SettingsState = {
   historyLimit: 25,
   recordImages: true,
   recordFiles: true,
-  storagePath: '%LOCALAPPDATA%\\CipherClip\\data',
+  storagePath: '%LOCALAPPDATA%\\ClipDeck\\data',
   shortcuts: {
     togglePanel: 'Alt + Space',
     primaryAction: 'Enter',

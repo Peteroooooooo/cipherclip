@@ -1,5 +1,5 @@
-# Builds backend/native into backend/native/bin: cipherclip_backdrop.dll (live glass) and
-# cipherclip_capture.exe (the screen capture helper it starts).
+# Builds backend/native into backend/native/bin: clipdeck_backdrop.dll (live glass) and
+# clipdeck_capture.exe (the screen capture helper it starts).
 # Needs Visual Studio Build Tools (C++ workload) and the Windows 10/11 SDK.
 $ErrorActionPreference = 'Stop'
 
@@ -16,8 +16,8 @@ $vcvars = Join-Path $vsPath 'VC\Auxiliary\Build\vcvars64.bat'
 
 $objDir = Join-Path $outDir 'obj'
 New-Item -ItemType Directory -Force -Path $objDir | Out-Null
-$dll = Join-Path $outDir 'cipherclip_backdrop.dll'
-$exe = Join-Path $outDir 'cipherclip_capture.exe'
+$dll = Join-Path $outDir 'clipdeck_backdrop.dll'
+$exe = Join-Path $outDir 'clipdeck_capture.exe'
 $common = "/nologo /std:c++17 /EHsc /O2 /MT /W3 /I`"$nativeDir`" /Fo`"$objDir\\`""
 
 # vcvars64 only works inside cmd, so the compile runs through a small generated batch file.
@@ -25,7 +25,7 @@ $batch = Join-Path $objDir 'build.cmd'
 @(
   '@echo off'
   "call `"$vcvars`" >nul || exit /b 1"
-  "cl $common /LD `"$nativeDir\live_backdrop.cpp`" /link /OUT:`"$dll`" /IMPLIB:`"$objDir\cipherclip_backdrop.lib`" windowsapp.lib dwmapi.lib CoreMessaging.lib d3d11.lib d2d1.lib dxguid.lib user32.lib || exit /b 1"
+  "cl $common /LD `"$nativeDir\live_backdrop.cpp`" /link /OUT:`"$dll`" /IMPLIB:`"$objDir\clipdeck_backdrop.lib`" windowsapp.lib dwmapi.lib CoreMessaging.lib d3d11.lib d2d1.lib dxguid.lib user32.lib || exit /b 1"
   "cl $common `"$nativeDir\capture_helper.cpp`" /link /OUT:`"$exe`" /SUBSYSTEM:WINDOWS Magnification.lib user32.lib || exit /b 1"
 ) | Set-Content -LiteralPath $batch -Encoding ascii
 

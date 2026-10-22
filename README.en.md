@@ -1,16 +1,16 @@
 [中文](README.md)
 
-# CipherClip
+# ClipDeck
 
-A clipboard history tool for Windows, with a liquid glass interface.
+A beautiful, useful clipboard for Windows.
 
-**[Live demo](https://peteroooooooo.github.io/cipherclip/)** · **[Download](https://github.com/Peteroooooooo/cipherclip/releases/latest)**
+**[Live demo](https://peteroooooooo.github.io/clipdeck/)** · **[Download](https://github.com/Peteroooooooo/clipdeck/releases/latest)**
 
-<p align="center"><img src="assets/demo-panel.png" alt="The CipherClip panel" width="400"></p>
+<p align="center"><img src="assets/demo-panel.png" alt="The ClipDeck panel" width="400"></p>
 
 ## Usage
 
-1. Download `CipherClip.zip`, put `CipherClip.exe` in a permanent folder and run it.
+1. Download `ClipDeck.zip`, put `ClipDeck.exe` in a permanent folder and run it.
 2. Press `Alt + Space` to open the panel, pick a clip and press `Enter` to paste it where you were typing.
 
 | Shortcut | Action |
@@ -32,4 +32,4 @@ cd frontend; npm install; npm run build; cd ..
 .\.venv\Scripts\python backend\main.py
 ```
 
-Release build: `.\scripts\build-release.ps1`, output `dist\CipherClip.exe`.
+Release build: `.\scripts\build-release.ps1`, output `dist\ClipDeck.exe`.

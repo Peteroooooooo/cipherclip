@@ -89,7 +89,7 @@ Expected: failing tests showing missing confirmation, missing shortcut configura
 
 **Files:**
 - Create: `backend/requirements-build.txt`
-- Create: `CipherClip.spec`
+- Create: `ClipDeck.spec`
 - Create: `scripts/build-release.ps1`
 - Modify: `frontend/package.json`
 - Modify: `README.md`

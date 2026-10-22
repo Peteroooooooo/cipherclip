@@ -1,7 +1,7 @@
 # Release Readiness Integration Design
 
 **Date:** 2026-03-12  
-**Scope:** Minimal-change release-readiness work for CipherClip packaging
+**Scope:** Minimal-change release-readiness work for ClipDeck packaging
 
 ## Goal
 
@@ -37,7 +37,7 @@ Bring the current app from "source tree works" to "ready to package and ship" wi
 
 - Keep frontend built as static Vite assets with relative paths.
 - Package `backend/main.py` with bundled `frontend/dist`.
-- Default packaged-user data should live under `%LOCALAPPDATA%\\CipherClip\\data`.
+- Default packaged-user data should live under `%LOCALAPPDATA%\\ClipDeck\\data`.
 - Startup command should launch the packaged executable hidden.
 
 ## Testing Strategy

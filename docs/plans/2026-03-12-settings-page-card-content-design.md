@@ -1,7 +1,7 @@
 # Settings Page Card Content Design
 
 **Date:** 2026-03-12  
-**Scope:** Frontend-only settings page content redesign for CipherClip  
+**Scope:** Frontend-only settings page content redesign for ClipDeck  
 **Constraint:** Keep the current settings page UI layout and visual style. Only adjust the card sections and the options inside those cards.
 
 ## Goal
@@ -46,7 +46,7 @@ The existing page shape stays:
 ```text
 +------------------------------------------------------------------+
 | Settings                                              [Back]     |
-| Configure CipherClip behavior, shortcuts, and storage.           |
+| Configure ClipDeck behavior, shortcuts, and storage.           |
 +------------------------------------------------------------------+
 | [General Card]                                                   |
 | [Shortcuts Card]                                                 |
@@ -62,7 +62,7 @@ The redesign should still look structurally like this:
 ```text
 +------------------------------------------------------------------+
 | Settings                                              [Back]     |
-| Configure CipherClip behavior, shortcuts, and storage.           |
+| Configure ClipDeck behavior, shortcuts, and storage.           |
 +------------------------------------------------------------------+
 | [Card 1]                                                         |
 | [Card 2]                                                         |
@@ -257,7 +257,7 @@ That can be done with subtle danger emphasis, but not a completely different lay
 ```text
 +------------------------------------------------------------------+
 | Settings                                              [Back]     |
-| Configure CipherClip behavior, shortcuts, and storage.           |
+| Configure ClipDeck behavior, shortcuts, and storage.           |
 +------------------------------------------------------------------+
 | General                                                          |
 | - Launch on Startup                                              |

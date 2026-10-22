@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import App from './App'
@@ -17,10 +17,12 @@ describe('App shell', () => {
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Search clipboard history' })).toBeInTheDocument()
+    // The search bar stays folded into the magnifier until it is asked for.
+    expect(screen.queryByRole('textbox', { name: 'Search clipboard history' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Search' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument()
     const alwaysOnTopButton = screen.getByRole('button', { name: 'Always on top' })
-    const recordingButton = screen.getByRole('button', { name: 'REC' })
+    const recordingButton = screen.getByRole('button', { name: 'Pause recording' })
 
     expect(alwaysOnTopButton).toHaveAttribute('aria-pressed', 'false')
     expect(alwaysOnTopButton.compareDocumentPosition(recordingButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -61,11 +63,13 @@ describe('App shell', () => {
     expect(confirmSpy).not.toHaveBeenCalled()
     expect(screen.getByText('Build review notes for the quick panel and tray wiring.')).toBeInTheDocument()
     expect(screen.getByText('Color token note: use warm paper background with rust accent and slate text.')).toBeInTheDocument()
-    expect(screen.queryByText('Sprint recap: finish tray wiring, validate pywebview bridge, update README.')).not.toBeInTheDocument()
-    expect(screen.queryByText('ssh deploy@staging-box')).not.toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(screen.queryByText('Sprint recap: finish tray wiring, validate pywebview bridge, update README.')).not.toBeInTheDocument()
+      expect(screen.queryByText('ssh deploy@staging-box')).not.toBeInTheDocument()
+    })
   })
 
-  test('does not show toast notifications for copy and clear actions', async () => {
+  test('shows no toast for copy but surfaces feedback for clearing', async () => {
     const user = userEvent.setup()
 
     render(<App />)
@@ -77,7 +81,24 @@ describe('App shell', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Clear' }))
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(await screen.findByRole('status')).toHaveTextContent('已清除未固定记录')
+  })
+
+  test('offers undo after deleting a record', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    const initialCount = document.querySelectorAll('[data-record-id]').length
+
+    const [deleteButton] = screen.getAllByRole('button', { name: 'Delete' })
+    await user.click(deleteButton)
+    await user.click(await screen.findByRole('button', { name: '撤销' }))
+
+    await vi.waitFor(() => {
+      expect(document.querySelectorAll('[data-record-id]')).toHaveLength(initialCount)
+    })
   })
 
   test('copy button delegates to the desktop copy action', async () => {
@@ -173,13 +194,77 @@ describe('App shell', () => {
     expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
     expect(screen.getByText('Build review notes for the quick panel and tray wiring.')).toBeInTheDocument()
 
+    await user.click(screen.getByRole('button', { name: 'Search' }))
     const search = screen.getByRole('textbox', { name: 'Search clipboard history' })
-    await user.clear(search)
+    expect(search).toHaveFocus()
     await user.type(search, 'Git Bash')
 
     const cards = document.querySelectorAll('[data-record-id]')
     expect(cards).toHaveLength(1)
     expect(within(cards[0] as HTMLElement).getByText('ssh deploy@staging-box')).toBeInTheDocument()
+  })
+
+  test('typing anywhere opens the search with that text, and Esc clears and folds it', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    const initialCount = document.querySelectorAll('[data-record-id]').length
+
+    await user.keyboard('ssh')
+    const search = screen.getByRole('textbox', { name: 'Search clipboard history' })
+    expect(search).toHaveValue('ssh')
+    expect(search).toHaveFocus()
+    await vi.waitFor(() => expect(document.querySelectorAll('[data-record-id]')).toHaveLength(1))
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('textbox', { name: 'Search clipboard history' })).not.toBeInTheDocument()
+    await vi.waitFor(() => expect(document.querySelectorAll('[data-record-id]')).toHaveLength(initialCount))
+  })
+
+  test('an empty search folds back on blur, one with text stays open', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    const searchButton = screen.getByRole('button', { name: 'Search' })
+
+    await user.click(searchButton)
+    await user.type(screen.getByRole('textbox', { name: 'Search clipboard history' }), 'git')
+    await user.click(document.querySelector('.panel-scroll')!)
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Clear search' }))
+    await user.click(document.querySelector('.panel-scroll')!)
+    await vi.waitFor(() => expect(searchButton).toHaveAttribute('aria-expanded', 'false'))
+  })
+
+  test('the window edge glows while searching; pin and recording each get their own cue', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    const glow = document.querySelector('.edge-glow')!
+    expect(glow).not.toHaveClass('is-active')
+
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    expect(glow).toHaveClass('is-active')
+    await user.keyboard('{Escape}')
+    expect(glow).not.toHaveClass('is-active')
+
+    // Pinning does not light the window edge (its ripple is checked in a real browser: jsdom has
+    // neither canvas nor Element.animate).
+    await user.click(screen.getByRole('button', { name: 'Always on top' }))
+    expect(glow).not.toHaveClass('is-active')
+
+    await user.click(screen.getByRole('button', { name: 'Pause recording' }))
+    expect(document.querySelector('.rec-ripple')).toBeNull()
+    await user.click(await screen.findByRole('button', { name: 'Resume recording' }))
+    await vi.waitFor(() => expect(document.querySelector('.rec-ripple')).not.toBeNull())
   })
 
   test('does not autofocus the search box after returning from settings', async () => {
@@ -194,8 +279,8 @@ describe('App shell', () => {
 
     await user.click(screen.getByRole('button', { name: 'Back' }))
 
-    const search = await screen.findByRole('textbox', { name: 'Search clipboard history' })
-    expect(search).not.toHaveFocus()
+    expect(await screen.findByRole('button', { name: 'Search' })).toHaveAttribute('aria-expanded', 'false')
+    expect(document.querySelector('.search-box')).not.toHaveFocus()
   })
 
   test('uses a customized delete shortcut in the quick panel', async () => {
@@ -217,8 +302,9 @@ describe('App shell', () => {
 
     await user.keyboard('{ArrowDown}{Backspace}')
 
-    const remainingCards = document.querySelectorAll('[data-record-id]')
-    expect(remainingCards).toHaveLength(initialCards.length - 1)
+    await vi.waitFor(() => {
+      expect(document.querySelectorAll('[data-record-id]')).toHaveLength(initialCards.length - 1)
+    })
   })
 
   test('shows a browse control for storage path selection', async () => {
@@ -304,6 +390,134 @@ describe('App shell', () => {
 
     expect(historyLimitInput).toHaveValue(26)
     expect(screen.getByRole('button', { name: 'Decrease history limit' })).toBeInTheDocument()
+  })
+
+  test('previews appearance edits live and reverts them on cancel', async () => {
+    const user = userEvent.setup()
+    const previewSpy = vi.spyOn(desktopApi, 'previewAppearance')
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    // The Dark Glass template is the default; Auto text picks white on it.
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    // White 164 and black 13 are one 40.78% tint of grey 31.88.
+    expect(document.documentElement.style.getPropertyValue('--tint-alpha')).toBe('0.4078')
+    expect(document.documentElement.style.getPropertyValue('--tint-gray')).toBe('31.88')
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(await screen.findByRole('heading', { name: 'Liquid Glass' })).toBeInTheDocument()
+    const glassTemplates = screen.getByRole('radiogroup', { name: 'Glass Template' })
+    expect(within(glassTemplates).getByRole('radio', { name: 'Dark Glass' })).toHaveAttribute('aria-checked', 'true')
+    // Only the two looks that really differ: dark and light.
+    expect(within(glassTemplates).getAllByRole('radio')).toHaveLength(2)
+
+    // Every parameter is editable; leaving all templates marks the glass as Custom.
+    expect(screen.queryByRole('slider', { name: /Backdrop Brightness/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('slider', { name: /Tint/ })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('slider', { name: /Blacks/ }), { target: { value: '40' } })
+    fireEvent.change(screen.getByRole('slider', { name: /Text Halo/ }), { target: { value: '45' } })
+    await vi.waitFor(() => expect(document.documentElement.style.getPropertyValue('--tint-gray')).toBe('77.86'))
+    expect(document.documentElement.style.getPropertyValue('--tint-alpha')).toBe('0.5137')
+
+    // Dragging white below black pushes black down with it.
+    fireEvent.change(screen.getByRole('slider', { name: /Whites/ }), { target: { value: '30' } })
+    await vi.waitFor(() => expect(screen.getByRole('slider', { name: /Blacks/ })).toHaveValue('26'))
+    fireEvent.change(screen.getByRole('slider', { name: /Whites/ }), { target: { value: '164' } })
+    fireEvent.change(screen.getByRole('slider', { name: /Blacks/ }), { target: { value: '40' } })
+    expect(document.documentElement.style.getPropertyValue('--text-halo')).toContain('rgba(0, 0, 0, 0.270)')
+    expect(within(glassTemplates).getByRole('radio', { name: 'Custom' })).toBeInTheDocument()
+
+    // A template fills in every glass parameter, including the ones that used to be hidden.
+    await user.click(within(glassTemplates).getByRole('radio', { name: 'Light Glass' }))
+    await vi.waitFor(() => expect(document.documentElement.dataset.theme).toBe('light'))
+    expect(document.documentElement.style.getPropertyValue('--tint-gray')).toBe('255')
+    expect(document.documentElement.style.getPropertyValue('--tint-alpha')).toBe('0.3216')
+    expect(screen.getByRole('slider', { name: /Backdrop Blur/ })).toHaveValue('16')
+    expect(screen.getByRole('slider', { name: /Backdrop Blur/ })).toHaveAttribute('max', '20')
+    expect(screen.queryByRole('slider', { name: /Backdrop Contrast/ })).not.toBeInTheDocument()
+    expect(within(glassTemplates).queryByRole('radio', { name: 'Custom' })).not.toBeInTheDocument()
+
+    await user.click(within(glassTemplates).getByRole('radio', { name: 'Dark Glass' }))
+    await vi.waitFor(() => expect(document.documentElement.dataset.theme).toBe('dark'))
+
+    // The text colour can still be forced.
+    await user.click(screen.getByRole('radio', { name: 'Black' }))
+    await vi.waitFor(() => expect(document.documentElement.dataset.theme).toBe('light'))
+
+    const radius = screen.getByRole('slider', { name: /Corner Radius/ })
+    fireEvent.change(radius, { target: { value: '32' } })
+    await vi.waitFor(() => expect(document.documentElement.style.getPropertyValue('--window-radius')).toBe('32px'))
+    await vi.waitFor(() => expect(previewSpy).toHaveBeenCalled())
+
+    // Liquid settings are previewed on sample glass inside the settings page itself.
+    const preview = screen.getByTestId('liquid-preview')
+    expect(preview.querySelectorAll('.liquid.is-liquid')).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: 'Liquid Effect' }))
+    await vi.waitFor(() => expect(preview.querySelectorAll('.liquid.is-plain')).toHaveLength(2))
+
+    const [cancelButton] = screen.getAllByRole('button', { name: 'Cancel' })
+    await user.click(cancelButton)
+
+    await vi.waitFor(() => {
+      expect(document.documentElement.dataset.theme).toBe('dark')
+      expect(document.documentElement.style.getPropertyValue('--tint-gray')).toBe('31.88')
+      expect(document.documentElement.style.getPropertyValue('--tint-alpha')).toBe('0.4078')
+      expect(document.documentElement.style.getPropertyValue('--window-radius')).toBe('24px')
+    })
+  })
+
+  test('saves appearance settings', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    await user.click(await screen.findByRole('button', { name: 'Liquid Effect' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    expect(document.querySelector('.search-glass')).toHaveClass('is-plain')
+  })
+
+  test('Delete edits the search text instead of deleting the highlighted clip', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    const initialCount = document.querySelectorAll('[data-record-id]').length
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    expect(screen.getByPlaceholderText('Search clips')).toHaveFocus()
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard('{Delete}')
+
+    expect(document.querySelectorAll('[data-record-id]')).toHaveLength(initialCount)
+  })
+
+  test('Restore Defaults only changes the unsaved shortcut draft', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    const toggleInput = screen.getByDisplayValue('Alt + Space')
+    await user.clear(toggleInput)
+    await user.type(toggleInput, 'Ctrl + K')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    await user.click(await screen.findByRole('button', { name: 'Restore Defaults' }))
+    expect(await screen.findByDisplayValue('Alt + Space')).toBeInTheDocument()
+
+    const [cancelButton] = screen.getAllByRole('button', { name: 'Cancel' })
+    await user.click(cancelButton)
+    expect(await screen.findByRole('heading', { name: 'CipherClip' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(await screen.findByDisplayValue('Ctrl + K')).toBeInTheDocument()
   })
 
   test('toggles the always-on-top toolbar pin button', async () => {

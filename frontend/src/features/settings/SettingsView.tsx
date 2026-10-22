@@ -1,60 +1,28 @@
-import { useEffect, useState } from 'react'
-import { ArrowLeft, ChevronDown, ChevronUp, RotateCcw, Save, X } from 'lucide-react'
-import type { SettingsState } from '../../app/types'
+import { useState } from 'react'
+import { ArrowCounterClockwise, CaretDown, CaretLeft, CaretUp, FloppyDisk, X } from '@phosphor-icons/react'
+import { DEFAULT_APPEARANCE } from '../../app/appearance'
+import type { AppearanceSettings, SettingsState, ShortcutBindings } from '../../app/types'
+import { AppearanceSections, type GlassInfo } from './AppearanceSections'
+import { ToggleRow } from './controls'
+
+export type { GlassInfo }
 
 interface SettingsViewProps {
   settings: SettingsState
+  glassInfo?: GlassInfo
   onSave: (settings: SettingsState) => void
   onCancel: () => void
-  onRestoreDefaults: () => void
+  /** Resolves to the factory shortcuts, which only replace the unsaved draft. */
+  onRestoreDefaults: () => Promise<ShortcutBindings>
   onClearAllHistory: () => void
   onPickStoragePath: (currentPath: string) => Promise<string | null>
+  /** Called with the unsaved appearance on every edit, so the app can show it live. */
+  onPreviewAppearance?: (appearance: AppearanceSettings) => void
 }
 
 const HISTORY_LIMIT_MIN = 1
 const HISTORY_LIMIT_MAX = 5000
 
-function Toggle({
-  checked,
-  label,
-  onClick,
-}: {
-  checked: boolean
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      aria-label={label}
-      aria-pressed={checked}
-      className={`toggle ${checked ? 'is-on' : ''}`}
-      onClick={onClick}
-      type="button"
-    />
-  )
-}
-
-function ToggleRow({
-  checked,
-  description,
-  label,
-  onClick,
-}: {
-  checked: boolean
-  description: string
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <div className="field-row">
-      <div className="field-label">
-        <strong>{label}</strong>
-        <span>{description}</span>
-      </div>
-      <Toggle checked={checked} label={label} onClick={onClick} />
-    </div>
-  )
-}
 
 function ShortcutRow({
   label,
@@ -83,15 +51,24 @@ function clampHistoryLimit(value: number) {
   return Math.min(HISTORY_LIMIT_MAX, Math.max(HISTORY_LIMIT_MIN, Math.trunc(value)))
 }
 
+const NO_GLASS: GlassInfo = { mode: null, liveAvailable: false }
+
 export function SettingsView({
   settings,
+  glassInfo = NO_GLASS,
   onSave,
   onCancel,
   onRestoreDefaults,
   onClearAllHistory,
   onPickStoragePath,
+  onPreviewAppearance,
 }: SettingsViewProps) {
   const [draft, setDraft] = useState(settings)
+
+  const setAppearance = (appearance: AppearanceSettings) => {
+    setDraft((currentDraft) => ({ ...currentDraft, appearance }))
+    onPreviewAppearance?.(appearance)
+  }
   const [historyLimitInput, setHistoryLimitInput] = useState(String(settings.historyLimit))
 
   const updateHistoryLimit = (value: number) => {
@@ -103,21 +80,28 @@ export function SettingsView({
     setHistoryLimitInput(String(nextValue))
   }
 
-  useEffect(() => {
+  // Snapshots are pushed whenever anything changes (e.g. a new clip arrives), each with a
+  // fresh settings object. Only reset the draft when the saved values actually change,
+  // otherwise background pushes would wipe what the user is typing.
+  const settingsKey = JSON.stringify(settings)
+  const [syncedSettingsKey, setSyncedSettingsKey] = useState(settingsKey)
+
+  if (settingsKey !== syncedSettingsKey) {
+    setSyncedSettingsKey(settingsKey)
     setDraft(settings)
     setHistoryLimitInput(String(settings.historyLimit))
-  }, [settings])
+  }
 
   return (
     <section className="settings-shell">
       <header className="settings-header">
-        <div>
+        <button aria-label="Back" className="icon-button" onClick={onCancel} title="Back" type="button">
+          <CaretLeft size={17} weight="bold" />
+        </button>
+        <div className="window-drag-region settings-title">
           <h1>Settings</h1>
           <p>Configure CipherClip behavior, shortcuts, and storage.</p>
         </div>
-        <button aria-label="Back" className="icon-button" onClick={onCancel} title="Back" type="button">
-          <ArrowLeft size={18} />
-        </button>
       </header>
 
       <div className="settings-scroll">
@@ -132,6 +116,13 @@ export function SettingsView({
             />
           </div>
         </section>
+
+        <AppearanceSections
+          appearance={draft.appearance}
+          glassInfo={glassInfo}
+          onChange={(patch) => setAppearance({ ...draft.appearance, ...patch })}
+          onReset={() => setAppearance(DEFAULT_APPEARANCE)}
+        />
 
         <section aria-labelledby="capture-heading" className="settings-section">
           <h2 id="capture-heading">Capture</h2>
@@ -217,8 +208,14 @@ export function SettingsView({
               value={draft.shortcuts.deleteRecord}
             />
           </div>
-          <button className="ghost-button" onClick={onRestoreDefaults} type="button">
-            <RotateCcw size={14} />
+          <button
+            className="ghost-button"
+            onClick={() =>
+              void onRestoreDefaults().then((shortcuts) => setDraft((currentDraft) => ({ ...currentDraft, shortcuts })))
+            }
+            type="button"
+          >
+            <ArrowCounterClockwise size={14} weight="bold" />
             Restore Defaults
           </button>
         </section>
@@ -263,7 +260,7 @@ export function SettingsView({
                     onClick={() => updateHistoryLimit(draft.historyLimit + 1)}
                     type="button"
                   >
-                    <ChevronUp size={14} />
+                    <CaretUp size={12} weight="bold" />
                   </button>
                   <button
                     aria-label="Decrease history limit"
@@ -271,7 +268,7 @@ export function SettingsView({
                     onClick={() => updateHistoryLimit(draft.historyLimit - 1)}
                     type="button"
                   >
-                    <ChevronDown size={14} />
+                    <CaretDown size={12} weight="bold" />
                   </button>
                 </div>
               </div>
@@ -326,11 +323,11 @@ export function SettingsView({
 
       <footer className="settings-footer">
         <button className="ghost-button" onClick={onCancel} type="button">
-          <X size={14} />
+          <X size={14} weight="bold" />
           Cancel
         </button>
         <button className="primary-button" onClick={() => onSave(draft)} type="button">
-          <Save size={14} />
+          <FloppyDisk size={15} />
           Save
         </button>
       </footer>

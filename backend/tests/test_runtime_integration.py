@@ -4,6 +4,7 @@ from pathlib import Path
 
 from backend.app.hotkeys import parse_shortcut_binding
 from backend.app.runtime import resolve_default_storage_path
+from backend.app.runtime import resolve_webview_data_path
 from backend.app.runtime import resolve_startup_command
 from backend.app.runtime_integration import RuntimeIntegrationController
 
@@ -53,6 +54,13 @@ def test_resolve_startup_command_uses_executable_for_frozen_runtime() -> None:
     )
 
     assert command == '"C:\\Program Files\\CipherClip\\CipherClip.exe" --start-hidden'
+
+
+def test_webview_data_lives_in_a_fixed_folder_under_local_app_data() -> None:
+    first = resolve_webview_data_path(env={"LOCALAPPDATA": str(TEST_LOCAL_APP_DATA)})
+    second = resolve_webview_data_path(env={"LOCALAPPDATA": str(TEST_LOCAL_APP_DATA)})
+
+    assert first == second == TEST_LOCAL_APP_DATA / "CipherClip" / "WebView2"
 
 
 def test_resolve_default_storage_path_uses_project_data_for_source_runtime() -> None:

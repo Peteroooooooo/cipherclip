@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
@@ -287,6 +288,63 @@ def test_switching_storage_path_merges_existing_target_history_and_migrates_imag
     assert migrated_image_path.read_bytes() == b"source-image"
 
 
+def test_switching_storage_back_does_not_resurrect_cleared_history(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    state.ingest_capture(ClipboardCapture(text="secret", source_app="Notepad"), captured_at="2026-03-11T10:00:00")
+    first_path = str(state.storage.base_path)
+
+    settings = state.settings.to_dict()
+    settings["storagePath"] = str(tmp_path / "elsewhere")
+    state.save_settings(settings, pause_recording=False)
+    state.clear_all_history()
+
+    settings = state.settings.to_dict()
+    settings["storagePath"] = first_path
+    switched = state.save_settings(settings, pause_recording=False)
+
+    assert switched["recentRecords"] == []
+
+
+def test_unreachable_storage_path_falls_back_to_default_folder(tmp_path: Path) -> None:
+    blocker = tmp_path / "not-a-folder"
+    blocker.write_text("x", encoding="utf-8")
+    bootstrap = AppStorage(base_path=tmp_path / "data")
+    seeded = AppState(storage=bootstrap)
+    settings = seeded.settings
+    settings.storage_path = str(blocker / "data")
+    bootstrap.save_settings(settings)
+
+    state = AppState(storage=AppStorage(base_path=tmp_path / "data"))
+
+    assert state.storage.base_path == tmp_path / "data"
+    assert state.toast is not None and state.toast.title == "存储位置不可用"
+
+
+def test_two_copies_in_the_same_second_keep_their_order_and_limit(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    settings = state.settings.to_dict()
+    settings["historyLimit"] = 1
+    state.save_settings(settings, pause_recording=False)
+
+    state.ingest_capture(ClipboardCapture(text="first", source_app="Code"), captured_at="2026-03-11T10:00:00")
+    snapshot = state.ingest_capture(ClipboardCapture(text="second", source_app="Code"), captured_at="2026-03-11T10:00:00")
+
+    assert [record["summary"] for record in snapshot["recentRecords"]] == ["second"]
+
+
+def test_default_shortcuts_do_not_touch_saved_settings(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    settings = state.settings.to_dict()
+    settings["shortcuts"]["togglePanel"] = "Ctrl + Shift + Space"
+    state.save_settings(settings, pause_recording=False)
+
+    defaults = state.default_shortcuts()
+
+    assert defaults["togglePanel"] == "Alt + Space"
+    assert state.settings.shortcuts.toggle_panel == "Ctrl + Shift + Space"
+    assert state.storage.load_settings().shortcuts.toggle_panel == "Ctrl + Shift + Space"
+
+
 def test_delete_record_prunes_image_file_and_undo_restores_it(tmp_path: Path) -> None:
     state = build_state(tmp_path)
     created = state.ingest_capture(
@@ -429,3 +487,158 @@ def test_restart_prefers_custom_storage_history_over_default_storage_history(tmp
     restarted = AppState(storage=default_storage)
 
     assert [record["summary"] for record in restarted.snapshot()["recentRecords"]] == ["custom history"]
+
+
+def test_ingest_duplicate_of_older_record_bumps_it_instead_of_adding(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    first = state.ingest_capture(
+        ClipboardCapture(text="alpha", source_app="VS Code"),
+        captured_at="2026-03-11T11:00:00",
+    )
+    alpha_id = first["recentRecords"][0]["id"]
+    state.ingest_capture(
+        ClipboardCapture(text="beta", source_app="VS Code"),
+        captured_at="2026-03-11T11:01:00",
+    )
+
+    again = state.ingest_capture(
+        ClipboardCapture(text="alpha", source_app="Word"),
+        captured_at="2026-03-11T11:02:00",
+    )
+
+    assert [record["summary"] for record in again["recentRecords"]] == ["alpha", "beta"]
+    bumped = again["recentRecords"][0]
+    assert bumped["id"] == alpha_id
+    assert bumped["updatedAt"] == "2026-03-11T11:02:00"
+    assert bumped["createdAt"] == "2026-03-11T11:00:00"
+    assert bumped["sourceApp"] == "Word"
+    assert bumped["sourceGlyph"] == "W"
+    assert [record.summary for record in state.storage.load_records()].count("alpha") == 1
+
+
+def test_ingest_duplicate_of_pinned_record_keeps_it_pinned(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    created = state.ingest_capture(
+        ClipboardCapture(text="pinned text", source_app="VS Code"),
+        captured_at="2026-03-11T11:10:00",
+    )
+    pinned_id = created["recentRecords"][0]["id"]
+    state.toggle_pin(pinned_id)
+    state.ingest_capture(
+        ClipboardCapture(text="other", source_app="VS Code"),
+        captured_at="2099-03-11T11:11:00",
+    )
+
+    again = state.ingest_capture(
+        ClipboardCapture(text="pinned text", source_app="Edge"),
+        captured_at="2099-03-11T11:12:00",
+    )
+
+    assert [record["id"] for record in again["pinnedRecords"]] == [pinned_id]
+    assert again["pinnedRecords"][0]["updatedAt"] == "2099-03-11T11:12:00"
+    assert again["pinnedRecords"][0]["sourceApp"] == "Edge"
+    assert [record["summary"] for record in again["recentRecords"]] == ["other"]
+
+
+def test_duplicate_image_capture_does_not_leave_orphan_image_files(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    state.ingest_capture(
+        ClipboardCapture(image_bytes=b"same-image", image_width=10, image_height=10, source_app="Snipping Tool"),
+        captured_at="2026-03-11T11:20:00",
+    )
+    state.ingest_capture(
+        ClipboardCapture(text="between", source_app="VS Code"),
+        captured_at="2026-03-11T11:21:00",
+    )
+
+    saved_paths: list[str] = []
+    original_save = state.storage.save_image_bytes
+
+    def tracking_save(*, record_id: str, image_bytes: bytes) -> str:
+        saved_paths.append(record_id)
+        return original_save(record_id=record_id, image_bytes=image_bytes)
+
+    state.storage.save_image_bytes = tracking_save
+    again = state.ingest_capture(
+        ClipboardCapture(image_bytes=b"same-image", image_width=10, image_height=10, source_app="Paint"),
+        captured_at="2026-03-11T11:22:00",
+    )
+
+    assert saved_paths == []
+    assert [record["type"] for record in again["recentRecords"]] == ["image", "text"]
+    assert len(list(state.storage.images_path.iterdir())) == 1
+
+
+def test_state_exposes_service_self_written_sequences(tmp_path: Path) -> None:
+    clipboard_service = DummyClipboardService()
+    clipboard_service.is_self_written_sequence = lambda sequence: sequence == 7
+    state = build_state(tmp_path, clipboard_service=clipboard_service)
+    plain_state = build_state(tmp_path / "plain", clipboard_service=DummyClipboardService())
+
+    assert state.is_self_written_sequence(7) is True
+    assert state.is_self_written_sequence(8) is False
+    assert plain_state.is_self_written_sequence(7) is False
+
+
+def test_listeners_are_notified_outside_the_state_lock(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    observations: list[bool] = []
+
+    def try_acquire(result: list[bool]) -> None:
+        acquired = state._lock.acquire(timeout=1)
+        if acquired:
+            state._lock.release()
+        result.append(acquired)
+
+    def listener(_snapshot: dict[str, object]) -> None:
+        result: list[bool] = []
+        worker = threading.Thread(target=try_acquire, args=(result,))
+        worker.start()
+        worker.join()
+        observations.append(bool(result and result[0]))
+
+    state.subscribe(listener)
+    state.ingest_capture(
+        ClipboardCapture(text="notify", source_app="VS Code"),
+        captured_at="2026-03-11T11:30:00",
+    )
+    state.toggle_pause()
+
+    assert observations == [True, True]
+
+
+def test_concurrent_ingest_and_bridge_calls_keep_history_consistent(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    state.settings.history_limit = 500
+    errors: list[BaseException] = []
+
+    def ingest_worker(offset: int) -> None:
+        try:
+            for index in range(40):
+                state.ingest_capture(
+                    ClipboardCapture(text=f"item-{offset}-{index}", source_app="VS Code"),
+                    captured_at=f"2026-03-11T12:{offset:02d}:{index:02d}",
+                )
+        except BaseException as error:  # pragma: no cover - surfaced by assertion
+            errors.append(error)
+
+    def reader_worker() -> None:
+        try:
+            for _ in range(80):
+                snapshot = state.snapshot()
+                for record in snapshot["recentRecords"][:1]:
+                    state.toggle_pin(str(record["id"]))
+        except BaseException as error:  # pragma: no cover - surfaced by assertion
+            errors.append(error)
+
+    threads = [threading.Thread(target=ingest_worker, args=(offset,)) for offset in range(3)]
+    threads.append(threading.Thread(target=reader_worker))
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    snapshot = state.snapshot()
+    assert errors == []
+    assert len(snapshot["pinnedRecords"]) + len(snapshot["recentRecords"]) == 120
+    assert len(state.storage.load_records()) == 120

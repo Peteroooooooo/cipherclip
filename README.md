@@ -32,9 +32,12 @@
 
 ### 运行发布版
 
-如果你下载的是发布包，直接运行 `CipherClip.exe` 即可。
+如果你下载的是发布包，解压后把 `CipherClip.exe` 放进一个固定的文件夹（比如 `D:\Apps\CipherClip\`），直接运行即可。
 
-- 首次启动时，默认会在 `CipherClip.exe` 同级的 `data` 目录保存数据
+- 剪贴板历史、图片和设置保存在 `CipherClip.exe` 同级的 `data` 目录；搬家时连同 `data` 一起移动，换新版本时只替换 exe
+- WebView2 的浏览器缓存在 `%LOCALAPPDATA%\CipherClip\WebView2`，删掉不会丢历史，下次启动会重新生成
+- 需要系统自带的 Microsoft Edge WebView2 Runtime（Windows 11 已内置）
+- 同一时间只运行一个 CipherClip：再次打开只会唤出已运行的那一个
 - 打包脚本会重新生成发布产物，但不会主动删除这个 `data` 目录
 
 ## 源码与开发
@@ -104,3 +107,5 @@ Set-Location ..
 输出目录：
 
 - `dist\CipherClip.exe`
+
+实时毛玻璃（live glass）需要的原生组件由 `scripts\build-native.ps1` 编译，需要 Visual Studio Build Tools（C++ 工作负载）和 Windows SDK；没有它们时打包仍会成功，只是发布版改用截图式玻璃。

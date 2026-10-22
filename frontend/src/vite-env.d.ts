@@ -19,11 +19,13 @@ declare global {
         trigger_primary_action: (recordId: string) => Promise<AppSnapshot>
         paste_plain_text: (recordId: string) => Promise<AppSnapshot>
         save_settings: (settings: SettingsState, pauseRecording: boolean) => Promise<AppSnapshot>
-        restore_default_shortcuts: () => Promise<AppSnapshot>
+        default_shortcuts: () => Promise<import('./app/types').ShortcutBindings>
         dismiss_toast: () => Promise<AppSnapshot>
         hide_window: () => Promise<void>
         pick_storage_path: (currentPath: string) => Promise<string | null>
         confirm_clear_all_history: () => Promise<boolean>
+        preview_appearance: (appearance: import('./app/types').AppearanceSettings) => Promise<void>
+        begin_window_drag: (grabX: number, grabY: number) => Promise<void>
       }
     }
   }

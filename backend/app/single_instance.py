@@ -13,6 +13,7 @@ ERROR_ALREADY_EXISTS = 183
 WAIT_OBJECT_0 = 0
 WAIT_TIMEOUT = 258
 EVENT_MODIFY_STATE = 0x0002
+ASFW_ANY = 0xFFFFFFFF
 
 
 class NoopSingleInstanceManager:
@@ -47,6 +48,7 @@ class WindowsSingleInstanceManager:
         self._event_handle = None
         self._listener_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+        self._uses_system_api = self._is_windows and kernel32 is None
 
         if not self._is_windows:
             self.kernel32 = None
@@ -87,6 +89,11 @@ class WindowsSingleInstanceManager:
 
         if not event_handle:
             return False
+
+        # This launch was started by the user and may take the foreground; hand that right to
+        # the running instance, or its panel opens behind the window the user is in.
+        if self._uses_system_api:
+            ctypes.windll.user32.AllowSetForegroundWindow(wintypes.DWORD(ASFW_ANY))
 
         try:
             return bool(self.kernel32.SetEvent(event_handle))

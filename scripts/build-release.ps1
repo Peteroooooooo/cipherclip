@@ -24,6 +24,15 @@ finally {
     Pop-Location
 }
 
+Write-Host "Building live glass helper..."
+try {
+    & (Join-Path $scriptRoot "build-native.ps1")
+}
+catch {
+    # Optional component: without it the app uses snapshot glass instead of live blur.
+    Write-Warning "Live glass helper not built ($_). The release will use snapshot glass."
+}
+
 Write-Host "Installing build dependencies..."
 & $python -m pip install -r (Join-Path $projectRoot "backend\requirements.txt") -r (Join-Path $projectRoot "backend\requirements-build.txt")
 

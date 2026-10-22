@@ -1,4 +1,13 @@
-import type { AppSnapshot, AppView, HistoryRecord, SettingsState, ToastMessage } from './types'
+import { DEFAULT_APPEARANCE, normalizeAppearance } from './appearance'
+import type {
+  AppearanceSettings,
+  AppSnapshot,
+  AppView,
+  HistoryRecord,
+  SettingsState,
+  ShortcutBindings,
+  ToastMessage,
+} from './types'
 
 type WindowApi = {
   get_app_state: () => Promise<AppSnapshot>
@@ -14,11 +23,13 @@ type WindowApi = {
   trigger_primary_action: (recordId: string) => Promise<AppSnapshot>
   paste_plain_text: (recordId: string) => Promise<AppSnapshot>
   save_settings: (settings: SettingsState, pauseRecording: boolean) => Promise<AppSnapshot>
-  restore_default_shortcuts: () => Promise<AppSnapshot>
+  default_shortcuts: () => Promise<ShortcutBindings>
   dismiss_toast: () => Promise<AppSnapshot>
   hide_window: () => Promise<void>
   pick_storage_path: (currentPath: string) => Promise<string | null>
   confirm_clear_all_history: () => Promise<boolean>
+  preview_appearance: (appearance: AppearanceSettings) => Promise<void>
+  begin_window_drag: (grabX: number, grabY: number) => Promise<void>
 }
 
 type SnapshotListener = (snapshot: AppSnapshot) => void
@@ -42,6 +53,7 @@ const defaultSettings: SettingsState = {
     togglePin: 'Ctrl + P',
     deleteRecord: 'Delete',
   },
+  appearance: DEFAULT_APPEARANCE,
 }
 
 function normalizeSettings(settings: Partial<SettingsState>): SettingsState {
@@ -53,6 +65,7 @@ function normalizeSettings(settings: Partial<SettingsState>): SettingsState {
       ...structuredClone(defaultSettings.shortcuts),
       ...(settings.shortcuts ?? {}),
     },
+    appearance: normalizeAppearance(settings.appearance),
   }
 }
 
@@ -510,17 +523,8 @@ function fallbackApi(): WindowApi {
         })
       })
     },
-    async restore_default_shortcuts() {
-      return applyFallbackMutation((draft) => {
-        draft.settings.shortcuts = structuredClone(defaultSettings.shortcuts)
-        draft.toast = nextToast({
-          id: '',
-          title: '快捷键已恢复默认',
-          message: '可以继续编辑后再保存。',
-          tone: 'neutral',
-          actionKind: null,
-        })
-      })
+    async default_shortcuts() {
+      return structuredClone(defaultSettings.shortcuts)
     },
     async dismiss_toast() {
       return applyFallbackMutation((draft) => {
@@ -536,6 +540,12 @@ function fallbackApi(): WindowApi {
     },
     async confirm_clear_all_history() {
       return window.confirm('Clear all clipboard history? Pinned and recent clips will be removed.')
+    },
+    async preview_appearance() {
+      return Promise.resolve()
+    },
+    async begin_window_drag() {
+      return Promise.resolve()
     },
   }
 }
@@ -584,8 +594,8 @@ export const desktopApi = {
   saveSettings(settings: SettingsState, pauseRecording: boolean) {
     return getWindowApi().save_settings(settings, pauseRecording)
   },
-  restoreDefaultShortcuts() {
-    return getWindowApi().restore_default_shortcuts()
+  defaultShortcuts() {
+    return getWindowApi().default_shortcuts()
   },
   dismissToast() {
     return getWindowApi().dismiss_toast()
@@ -598,6 +608,12 @@ export const desktopApi = {
   },
   confirmClearAllHistory() {
     return getWindowApi().confirm_clear_all_history()
+  },
+  previewAppearance(appearance: AppearanceSettings) {
+    return getWindowApi().preview_appearance(appearance)
+  },
+  beginWindowDrag(grabX: number, grabY: number) {
+    return getWindowApi().begin_window_drag(grabX, grabY)
   },
 }
 

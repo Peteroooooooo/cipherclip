@@ -33,6 +33,7 @@ from backend.app.clipboard import WindowsClipboardReader
 from backend.app.hotkeys import NoopGlobalHotkeyManager
 from backend.app.hotkeys import WindowsGlobalHotkeyManager
 from backend.app.runtime import resolve_startup_command
+from backend.app.runtime import resolve_webview_data_path
 from backend.app.runtime import START_HIDDEN_FLAG
 from backend.app.runtime_integration import NoopStartupManager
 from backend.app.runtime_integration import RuntimeIntegrationController
@@ -68,6 +69,7 @@ def main(argv: list[str] | None = None) -> None:
         reader=WindowsClipboardReader(),
         on_capture=state.ingest_capture,
         is_paused=lambda: state.is_recording_paused,
+        should_ignore_sequence=state.is_self_written_sequence,
     )
     window_controller = AppWindowController(
         project_root=project_root,
@@ -76,10 +78,20 @@ def main(argv: list[str] | None = None) -> None:
         dev_mode=dev_mode,
         start_hidden=start_hidden,
         close_to_tray_provider=lambda: state.settings.close_to_tray,
+        hide_on_blur_provider=lambda: True,
+        on_blur_hide=state.clear_paste_target,
+        appearance_provider=lambda: state.settings.appearance.to_dict(),
     )
     window_controller.create()
-    single_instance_manager.start_activation_listener(window_controller.show)
-    bridge._bind_confirm_clear_all_history(confirm_clear_all_history)
+
+    def show_without_paste_target() -> None:
+        # Only the global shortcut knows which window the user was typing in; opened from the
+        # tray or a second launch, an old target would make a click paste into the wrong app.
+        state.clear_paste_target()
+        window_controller.show()
+
+    single_instance_manager.start_activation_listener(show_without_paste_target)
+    bridge._bind_confirm_clear_all_history(lambda: window_controller.run_modal(confirm_clear_all_history))
     startup_manager = WindowsStartupManager() if os.name == "nt" else NoopStartupManager()
     hotkey_manager = WindowsGlobalHotkeyManager() if os.name == "nt" else NoopGlobalHotkeyManager()
     runtime_integration = RuntimeIntegrationController(
@@ -89,13 +101,23 @@ def main(argv: list[str] | None = None) -> None:
         toggle_window=lambda: _toggle_window_from_shortcut(state=state, window_controller=window_controller),
     )
     state.subscribe(lambda _snapshot: window_controller.dispatch_snapshot(bridge.get_app_state()))
+    saved_appearance = {"value": state.settings.appearance.to_dict()}
+
+    def follow_saved_appearance(_snapshot) -> None:
+        # Only react when the saved look changes, so a clip arriving mid-preview keeps the preview.
+        current = state.settings.appearance.to_dict()
+        if current != saved_appearance["value"]:
+            saved_appearance["value"] = current
+            window_controller.apply_appearance(current)
+
+    state.subscribe(follow_saved_appearance)
     state.subscribe(runtime_integration.sync)
     runtime_integration.sync(state.snapshot())
 
     tray = TrayController(
         state=state,
-        show_history=window_controller.show,
-        show_settings=window_controller.show,
+        show_history=show_without_paste_target,
+        show_settings=show_without_paste_target,
         exit_app=lambda: _shutdown(
             tray=None,
             window_controller=window_controller,
@@ -114,7 +136,7 @@ def main(argv: list[str] | None = None) -> None:
     tray.run()
     monitor.start()
 
-    webview.start(debug=debug_mode)
+    webview.start(debug=debug_mode, storage_path=str(resolve_webview_data_path()))
 
 
 def _shutdown(

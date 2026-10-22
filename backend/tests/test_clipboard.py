@@ -2,9 +2,14 @@ from __future__ import annotations
 
 from collections import deque
 import ctypes
+import io
+from types import SimpleNamespace
+
+from PIL import Image
 
 from backend.app.clipboard import ClipboardCapture
 from backend.app.clipboard import ClipboardMonitor
+from backend.app.clipboard import SelfWriteTracker
 from backend.app.clipboard import WindowsClipboardReader
 from backend.app.clipboard import WindowsClipboardService
 from backend.app.clipboard import build_record_from_capture
@@ -169,6 +174,34 @@ def test_clipboard_monitor_emits_only_when_sequence_changes() -> None:
     assert [capture.text for capture in emitted] == ["first", "second"]
 
 
+def test_clipboard_monitor_retries_a_copy_it_could_not_read_yet() -> None:
+    emitted: list[ClipboardCapture] = []
+    # The first read fails (another app still has the clipboard open); the sequence is unchanged.
+    monitor = ClipboardMonitor(
+        reader=FakeClipboardReader(sequence_numbers=[5, 5], captures=[None, ClipboardCapture(text="late")]),
+        on_capture=emitted.append,
+        is_paused=lambda: False,
+    )
+
+    monitor.poll_once()
+    monitor.poll_once()
+
+    assert [capture.text for capture in emitted] == ["late"]
+
+
+def test_text_copied_with_a_rendered_bitmap_is_kept_as_text() -> None:
+    # Excel and other office apps put a picture of the selection next to the text.
+    record = build_record_from_capture(
+        ClipboardCapture(text="A1\tB1", rich_text="<table>…</table>", image_bytes=b"bitmap", image_width=90, image_height=20),
+        settings(),
+        captured_at="2026-03-11T12:30:00",
+    )
+
+    assert record is not None
+    assert record.type == "rich_text"
+    assert record.plain_text == "A1\tB1"
+
+
 def test_clipboard_monitor_skips_capture_while_paused() -> None:
     emitted: list[ClipboardCapture] = []
     paused = True
@@ -188,6 +221,93 @@ def test_clipboard_monitor_skips_capture_while_paused() -> None:
     monitor.poll_once()
 
     assert [capture.text for capture in emitted] == ["second"]
+
+
+def test_clipboard_monitor_skips_ignored_sequences_and_resumes_on_next_change() -> None:
+    emitted: list[ClipboardCapture] = []
+    monitor = ClipboardMonitor(
+        reader=FakeClipboardReader(
+            sequence_numbers=[5, 6],
+            captures=[ClipboardCapture(text="external")],
+        ),
+        on_capture=emitted.append,
+        is_paused=lambda: False,
+        should_ignore_sequence=lambda sequence: sequence == 5,
+    )
+
+    assert monitor.poll_once() is False
+    assert monitor.poll_once() is True
+    assert [capture.text for capture in emitted] == ["external"]
+
+
+def test_self_write_tracker_ignores_sequences_inside_active_and_finished_writes() -> None:
+    tracker = SelfWriteTracker()
+
+    tracker.begin(start_sequence=10)
+    assert tracker.is_self_written(10) is False
+    assert tracker.is_self_written(11) is True
+
+    tracker.finish(start_sequence=10, end_sequence=13)
+    assert tracker.is_self_written(10) is False
+    assert tracker.is_self_written(12) is True
+    assert tracker.is_self_written(13) is True
+    assert tracker.is_self_written(14) is False
+
+
+class FakeSequenceUser32:
+    def __init__(self, sequence: int) -> None:
+        self.sequence = sequence
+
+    def GetClipboardSequenceNumber(self) -> int:
+        return self.sequence
+
+    def OpenClipboard(self, owner) -> int:
+        return 1
+
+    def EmptyClipboard(self) -> int:
+        self.sequence += 1
+        return 1
+
+    def CloseClipboard(self) -> int:
+        return 1
+
+
+def test_write_record_marks_resulting_sequences_so_monitor_skips_self_writes() -> None:
+    user32 = FakeSequenceUser32(sequence=100)
+    clipboard_service = object.__new__(WindowsClipboardService)
+    clipboard_service._is_windows = True
+    clipboard_service._self_writes = SelfWriteTracker()
+    clipboard_service.user32 = user32
+
+    def set_payload(format_id: int, payload: bytes) -> None:
+        user32.sequence += 1
+
+    clipboard_service._set_memory_payload = set_payload
+    record = build_record_from_capture(
+        ClipboardCapture(text="from panel", source_app="VS Code"),
+        settings(),
+        captured_at="2026-03-11T12:33:00",
+    )
+    assert record is not None
+
+    clipboard_service.write_record(record, as_plain_text=True)
+    self_written_sequence = user32.sequence
+
+    emitted: list[ClipboardCapture] = []
+    monitor = ClipboardMonitor(
+        reader=FakeClipboardReader(
+            sequence_numbers=[self_written_sequence, self_written_sequence + 1],
+            captures=[ClipboardCapture(text="external copy")],
+        ),
+        on_capture=emitted.append,
+        is_paused=lambda: False,
+        should_ignore_sequence=clipboard_service.is_self_written_sequence,
+    )
+
+    assert self_written_sequence > 100
+    assert monitor.poll_once() is False
+    assert monitor.poll_once() is True
+    assert [capture.text for capture in emitted] == ["external copy"]
 
 
 def test_windows_clipboard_reader_configures_pointer_sized_winapi_signatures() -> None:
@@ -258,3 +378,46 @@ def test_restore_paste_target_restores_minimized_window_before_foregrounding() -
 
     assert restored is True
     assert calls == [("show", 42, 9), ("foreground", 42)]
+
+
+def test_set_image_resolves_file_uri_paths(tmp_path) -> None:
+    image_path = tmp_path / "preview.png"
+    Image.new("RGB", (2, 2), (20, 40, 60)).save(image_path)
+    payloads: list[tuple[int, bytes]] = []
+
+    clipboard_service = object.__new__(WindowsClipboardService)
+    clipboard_service.CF_DIB = WindowsClipboardService.CF_DIB
+    clipboard_service.user32 = SimpleNamespace(RegisterClipboardFormatW=lambda _name: 0xC100)
+    clipboard_service._set_memory_payload = lambda format_id, payload: payloads.append((format_id, payload))
+
+    assert clipboard_service._set_image(image_path.as_uri()) is True
+    assert payloads
+    assert payloads[0][0] == WindowsClipboardService.CF_DIB
+    assert not payloads[0][1].startswith(b"BM")
+
+
+def test_set_image_also_offers_png_so_transparency_survives(tmp_path) -> None:
+    image_path = tmp_path / "logo.png"
+    Image.new("RGBA", (2, 2), (255, 0, 0, 0)).save(image_path)
+    payloads: dict[int, bytes] = {}
+
+    clipboard_service = object.__new__(WindowsClipboardService)
+    clipboard_service.CF_DIB = WindowsClipboardService.CF_DIB
+    clipboard_service.user32 = SimpleNamespace(RegisterClipboardFormatW=lambda _name: 0xC100)
+    clipboard_service._set_memory_payload = lambda format_id, payload: payloads.__setitem__(format_id, payload)
+
+    assert clipboard_service._set_image(image_path.as_uri()) is True
+    with Image.open(io.BytesIO(payloads[0xC100])) as png:
+        assert png.mode == "RGBA"
+        assert png.getpixel((0, 0))[3] == 0
+
+
+def test_set_image_skips_missing_file_uri_paths(tmp_path) -> None:
+    payloads: list[tuple[int, bytes]] = []
+
+    clipboard_service = object.__new__(WindowsClipboardService)
+    clipboard_service.CF_DIB = WindowsClipboardService.CF_DIB
+    clipboard_service._set_memory_payload = lambda format_id, payload: payloads.append((format_id, payload))
+
+    assert clipboard_service._set_image((tmp_path / "missing.png").as_uri()) is False
+    assert payloads == []

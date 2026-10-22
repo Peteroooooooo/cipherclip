@@ -32,9 +32,12 @@ A Windows clipboard history tool built with Python, pywebview, pystray, React, a
 
 ### Run the packaged app
 
-If you are using a release build, launch `CipherClip.exe`.
+If you are using a release build, unzip it, put `CipherClip.exe` in a permanent folder (for example `D:\Apps\CipherClip\`) and launch it.
 
-- On first launch, data is stored in the `data` folder beside `CipherClip.exe` by default
+- Clipboard history, images and settings live in the `data` folder beside `CipherClip.exe`; move the two together, and to upgrade replace only the exe
+- WebView2's browser cache lives in `%LOCALAPPDATA%\CipherClip\WebView2`; deleting it loses no history, it is rebuilt on the next launch
+- Requires the Microsoft Edge WebView2 Runtime (built into Windows 11)
+- Only one CipherClip runs at a time: launching it again just brings up the running one
 - The release build script rebuilds the release artifact, but it does not proactively delete this `data` folder
 
 ## Source and Development
@@ -104,3 +107,5 @@ Set-Location ..
 Output:
 
 - `dist\CipherClip.exe`
+
+The native part of the live glass is compiled by `scripts\build-native.ps1`, which needs Visual Studio Build Tools (C++ workload) and the Windows SDK; without them the build still succeeds and the release uses snapshot glass instead.

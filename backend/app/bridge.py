@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from .clipboard import ClipboardCapture
+from .models import AppearanceSettings
 from .state import AppState
 
 
@@ -14,6 +15,8 @@ class AppBridge:
         self._confirm_clear_all_history: Callable[[], bool] | None = None
         self._toggle_always_on_top: Callable[[], None] | None = None
         self._is_always_on_top: Callable[[], bool] | None = None
+        self._preview_appearance: Callable[[dict[str, object]], None] | None = None
+        self._begin_window_drag: Callable[[float, float], None] | None = None
 
     def _bind_hide_window(self, hide_window: Callable[[], None]) -> None:
         self._hide_window = hide_window
@@ -29,6 +32,24 @@ class AppBridge:
 
     def _bind_is_always_on_top(self, is_always_on_top: Callable[[], bool]) -> None:
         self._is_always_on_top = is_always_on_top
+
+    def _bind_preview_appearance(self, preview_appearance: Callable[[dict[str, object]], None]) -> None:
+        self._preview_appearance = preview_appearance
+
+    def _bind_begin_window_drag(self, begin_window_drag: Callable[[float, float], None]) -> None:
+        self._begin_window_drag = begin_window_drag
+
+    def begin_window_drag(self, grab_x: float, grab_y: float) -> None:
+        """The page's title area was pressed at (grab_x, grab_y), physical px inside the window."""
+        if self._begin_window_drag is None:
+            return
+        self._begin_window_drag(float(grab_x), float(grab_y))
+
+    def preview_appearance(self, appearance: dict[str, object]) -> None:
+        """Apply unsaved glass settings to the native window while the user edits them."""
+        if self._preview_appearance is None:
+            return
+        self._preview_appearance(AppearanceSettings.from_dict(appearance if isinstance(appearance, dict) else None).to_dict())
 
     def get_app_state(self) -> dict[str, object]:
         return self._snapshot()
@@ -85,9 +106,9 @@ class AppBridge:
         self._state.save_settings(settings, pause_recording)
         return self._snapshot()
 
-    def restore_default_shortcuts(self) -> dict[str, object]:
-        self._state.restore_default_shortcuts()
-        return self._snapshot()
+    def default_shortcuts(self) -> dict[str, str]:
+        """Factory shortcuts for the settings draft; nothing changes until the user saves."""
+        return self._state.default_shortcuts()
 
     def dismiss_toast(self) -> dict[str, object]:
         self._state.dismiss_toast()

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { HistoryCard } from './HistoryCard'
@@ -82,5 +82,79 @@ describe('HistoryCard', () => {
       'src',
       'C:/temp/image.png',
     )
+  })
+
+  test('shows the source app icon when there is one, and the glyph if it fails to load', () => {
+    const { container } = render(
+      <HistoryCard
+        isActive={false}
+        isPinned={false}
+        onActivate={vi.fn()}
+        onCopy={vi.fn()}
+        onDelete={vi.fn()}
+        onPinToggle={vi.fn()}
+        record={{
+          id: 'text-2',
+          type: 'text',
+          summary: 'Copied from VS Code',
+          detail: 'Copied from VS Code',
+          meta: 'Text',
+          sourceApp: 'Visual Studio Code',
+          sourceGlyph: 'VS',
+          sourceIcon: 'file:///C:/data/icons/code.png',
+          pinned: false,
+          createdAt: '2026-10-22T08:30:00',
+          updatedAt: '2026-10-22T08:30:00',
+          contentHash: 'hash-text-2',
+          plainText: 'Copied from VS Code',
+          richText: null,
+          imagePath: null,
+          imageWidth: null,
+          imageHeight: null,
+          filePaths: [],
+        }}
+      />,
+    )
+
+    const icon = container.querySelector('.record-app-icon')!
+    expect(icon).toHaveAttribute('src', 'file:///C:/data/icons/code.png')
+    expect(screen.queryByText('VS')).not.toBeInTheDocument()
+
+    fireEvent.error(icon)
+    expect(screen.getByText('VS')).toBeInTheDocument()
+  })
+
+  test('renders the source app glyph for non-image records', () => {
+    render(
+      <HistoryCard
+        isActive={false}
+        isPinned={false}
+        onActivate={vi.fn()}
+        onCopy={vi.fn()}
+        onDelete={vi.fn()}
+        onPinToggle={vi.fn()}
+        record={{
+          id: 'text-1',
+          type: 'text',
+          summary: 'Copied terminal output',
+          detail: 'Copied terminal output',
+          meta: 'Text',
+          sourceApp: 'WindowsTerminal',
+          sourceGlyph: 'WT',
+          pinned: false,
+          createdAt: '2026-03-11T08:30:00',
+          updatedAt: '2026-03-11T08:30:00',
+          contentHash: 'hash-text-1',
+          plainText: 'Copied terminal output',
+          richText: null,
+          imagePath: null,
+          imageWidth: null,
+          imageHeight: null,
+          filePaths: [],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('WT')).toBeInTheDocument()
   })
 })

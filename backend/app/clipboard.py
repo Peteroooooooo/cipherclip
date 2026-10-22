@@ -7,6 +7,7 @@ import re
 import threading
 import time
 import uuid
+from collections import deque
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
@@ -19,8 +20,10 @@ if hasattr(ctypes, "windll"):
 else:  # pragma: no cover - non-Windows guard
     wintypes = None
 
+from .app_icons import identify_source_app
 from .models import HistoryRecord
 from .models import SettingsState
+from .storage import resolve_local_path
 
 
 @dataclass(slots=True)
@@ -33,6 +36,8 @@ class ClipboardCapture:
     file_paths: list[str] = field(default_factory=list)
     source_app: str | None = None
     source_glyph: str | None = None
+    # Full path of the source app's exe, for its icon (None when unknown or CipherClip itself).
+    source_exe: str | None = None
 
 
 class ClipboardMonitor:
@@ -42,12 +47,14 @@ class ClipboardMonitor:
         reader,
         on_capture,
         is_paused,
+        should_ignore_sequence=None,
         poll_interval: float = 0.35,
         sleep_fn=time.sleep,
     ) -> None:
         self.reader = reader
         self.on_capture = on_capture
         self.is_paused = is_paused
+        self.should_ignore_sequence = should_ignore_sequence
         self.poll_interval = poll_interval
         self.sleep_fn = sleep_fn
         self._last_sequence = 0
@@ -72,14 +79,20 @@ class ClipboardMonitor:
         if sequence_number == 0 or sequence_number == self._last_sequence:
             return False
 
-        self._last_sequence = sequence_number
         if self.is_paused():
+            self._last_sequence = sequence_number
+            return False
+
+        if self.should_ignore_sequence is not None and self.should_ignore_sequence(sequence_number):
+            self._last_sequence = sequence_number
             return False
 
         capture = self.reader.read_capture()
         if capture is None:
+            # Usually another app still holds the clipboard open; try again on the next poll.
             return False
 
+        self._last_sequence = sequence_number
         self.on_capture(capture)
         return True
 
@@ -90,6 +103,30 @@ class ClipboardMonitor:
             except Exception:
                 pass
             self.sleep_fn(self.poll_interval)
+
+
+class SelfWriteTracker:
+    def __init__(self, *, max_ranges: int = 8) -> None:
+        self._lock = threading.Lock()
+        self._active_starts: list[int] = []
+        self._ranges: deque[tuple[int, int]] = deque(maxlen=max_ranges)
+
+    def begin(self, *, start_sequence: int) -> None:
+        with self._lock:
+            self._active_starts.append(start_sequence)
+
+    def finish(self, *, start_sequence: int, end_sequence: int) -> None:
+        with self._lock:
+            if start_sequence in self._active_starts:
+                self._active_starts.remove(start_sequence)
+            if end_sequence > start_sequence:
+                self._ranges.append((start_sequence, end_sequence))
+
+    def is_self_written(self, sequence_number: int) -> bool:
+        with self._lock:
+            if any(start < sequence_number for start in self._active_starts):
+                return True
+            return any(start < sequence_number <= end for start, end in self._ranges)
 
 
 class WindowsClipboardReader:
@@ -143,7 +180,9 @@ class WindowsClipboardReader:
         image_width: int | None = None
         image_height: int | None = None
 
-        if not file_paths:
+        # Spreadsheets and office apps add a rendered bitmap next to copied text; that picture is
+        # never what the user meant to keep, so it is only read when there is no text at all.
+        if not file_paths and not _has_text(text):
             clipboard_image = ImageGrab.grabclipboard()
             if isinstance(clipboard_image, Image.Image):
                 with io.BytesIO() as buffer:
@@ -153,7 +192,7 @@ class WindowsClipboardReader:
             elif isinstance(clipboard_image, list):
                 file_paths = [str(item) for item in clipboard_image]
 
-        source_app = _foreground_app_name()
+        source = identify_source_app()
         return ClipboardCapture(
             text=text,
             rich_text=rich_text,
@@ -161,8 +200,9 @@ class WindowsClipboardReader:
             image_width=image_width,
             image_height=image_height,
             file_paths=file_paths,
-            source_app=source_app,
-            source_glyph=_glyph_for_app(source_app),
+            source_app=source.name,
+            source_glyph=_glyph_for_app(source.name),
+            source_exe=source.exe_path,
         )
 
     def _open_clipboard(self) -> bool:
@@ -257,7 +297,7 @@ def build_record_from_capture(
             file_paths=list(capture.file_paths),
         )
 
-    if capture.image_bytes and settings.record_images:
+    if capture.image_bytes and settings.record_images and not _has_text(capture.text):
         width = capture.image_width or 0
         height = capture.image_height or 0
         return HistoryRecord(
@@ -319,6 +359,10 @@ def build_record_from_capture(
     return None
 
 
+def _has_text(value: str | None) -> bool:
+    return bool(value and value.strip())
+
+
 def _hash_for_payload(kind: str, payload: bytes) -> str:
     digest = hashlib.sha256()
     digest.update(kind.encode("utf-8"))
@@ -344,37 +388,6 @@ def _trim_summary(value: str, limit: int = 120) -> str:
     return compact[: limit - 1].rstrip() + "…"
 
 
-def _foreground_app_name() -> str:
-    if not hasattr(ctypes, "windll") or wintypes is None:  # pragma: no cover - non-Windows guard
-        return "Clipboard"
-
-    user32 = ctypes.windll.user32
-    kernel32 = ctypes.windll.kernel32
-    hwnd = user32.GetForegroundWindow()
-    if not hwnd:
-        return "Clipboard"
-
-    process_id = wintypes.DWORD()
-    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
-    if not process_id.value:
-        return "Clipboard"
-
-    process = kernel32.OpenProcess(0x1000, False, process_id.value)
-    if not process:
-        return "Clipboard"
-
-    try:
-        size = wintypes.DWORD(260)
-        buffer = ctypes.create_unicode_buffer(size.value)
-        if kernel32.QueryFullProcessImageNameW(process, 0, buffer, ctypes.byref(size)):
-            app_name = Path(buffer.value).stem.replace("_", " ").strip()
-            return app_name or "Clipboard"
-    finally:
-        kernel32.CloseHandle(process)
-
-    return "Clipboard"
-
-
 class WindowsClipboardService:
     CF_UNICODETEXT = 13
     CF_HDROP = 15
@@ -388,6 +401,7 @@ class WindowsClipboardService:
     def __init__(self) -> None:
         self._is_windows = hasattr(ctypes, "windll")
         self._paste_target_hwnd = None
+        self._self_writes = SelfWriteTracker()
         if not self._is_windows:
             return
 
@@ -395,6 +409,9 @@ class WindowsClipboardService:
         self.kernel32 = ctypes.windll.kernel32
         _configure_clipboard_api(self.user32, self.kernel32)
         _configure_window_activation_api(self.user32)
+
+    def is_self_written_sequence(self, sequence_number: int) -> bool:
+        return self._self_writes.is_self_written(sequence_number)
 
     def capture_paste_target(self) -> None:
         if not self._is_windows:
@@ -425,6 +442,17 @@ class WindowsClipboardService:
         if not self._is_windows:
             return
 
+        start_sequence = self._sequence_number()
+        self._self_writes.begin(start_sequence=start_sequence)
+        try:
+            self._write_clipboard(record, as_plain_text=as_plain_text)
+        finally:
+            self._self_writes.finish(start_sequence=start_sequence, end_sequence=self._sequence_number())
+
+    def _sequence_number(self) -> int:
+        return int(self.user32.GetClipboardSequenceNumber())
+
+    def _write_clipboard(self, record: HistoryRecord, *, as_plain_text: bool) -> None:
         if not self._open_clipboard():
             return
 
@@ -435,8 +463,7 @@ class WindowsClipboardService:
                 self._set_file_drop(record.file_paths)
                 return
 
-            if record.type == "image" and record.image_path and not as_plain_text:
-                self._set_image(record.image_path)
+            if record.type == "image" and record.image_path and not as_plain_text and self._set_image(record.image_path):
                 return
 
             plain_text = record.plain_text or record.detail or record.summary
@@ -496,12 +523,30 @@ class WindowsClipboardService:
         header = ctypes.string_at(ctypes.byref(drop_files), ctypes.sizeof(DROPFILES))
         self._set_memory_payload(self.CF_HDROP, header + encoded_paths)
 
-    def _set_image(self, image_path: str) -> None:
-        with Image.open(image_path) as image:
+    def _set_image(self, image_path: str) -> bool:
+        resolved_path = resolve_local_path(image_path)
+        if resolved_path is None or not resolved_path.exists():
+            return False
+
+        try:
+            image = Image.open(resolved_path)
+        except (OSError, ValueError):
+            return False
+
+        with image:
             with io.BytesIO() as buffer:
                 image.convert("RGB").save(buffer, format="BMP")
                 payload = buffer.getvalue()[14:]
+            # CF_DIB has no usable alpha; apps that read the registered "PNG" format (Office,
+            # browsers, chat apps) get the transparency back from this copy.
+            with io.BytesIO() as buffer:
+                image.save(buffer, format="PNG")
+                png_payload = buffer.getvalue()
         self._set_memory_payload(self.CF_DIB, payload)
+        png_format = self.user32.RegisterClipboardFormatW("PNG")
+        if png_format:
+            self._set_memory_payload(png_format, png_payload)
+        return True
 
     def _set_memory_payload(self, format_id: int, payload: bytes) -> None:
         handle = self.kernel32.GlobalAlloc(self.GMEM_MOVEABLE, len(payload))

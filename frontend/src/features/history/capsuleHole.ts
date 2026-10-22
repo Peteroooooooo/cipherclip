@@ -76,8 +76,8 @@ export function trackCapsule(ms = TRACK_MS) {
   }
 }
 
-// The glass's pull towards the pointer eases over 200ms (.liquid transition) after each move.
-const followPointer = () => trackCapsule(300)
+// The hover magnet's spring (.liquid.is-magnetic) settles about 520ms after each move.
+const followPointer = () => trackCapsule(650)
 
 /** Ref callback for the capsule element. */
 export function capsuleRef(element: HTMLElement | null) {

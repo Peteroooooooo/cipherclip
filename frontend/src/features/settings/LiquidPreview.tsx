@@ -33,18 +33,18 @@ export function LiquidPreview() {
   // in view while the sliders below it are dragged.
   return (
     <>
-      <p className="liquid-preview-hint">Preview · move the pointer near the glass to feel the elasticity</p>
+      <p className="liquid-preview-hint">Preview · hover the glass to feel the magnet</p>
       <div aria-hidden="true" className="liquid-preview-stage" data-testid="liquid-preview">
         <div className="liquid-preview-track">
           <SampleRows />
           <SampleRows />
         </div>
-        <div className="liquid-preview-glass">
-          <LiquidGlass className="liquid-preview-search">
+        <div className="liquid-preview-glass magnet-group">
+          <LiquidGlass className="liquid-preview-search" magnetic>
             <MagnifyingGlass size={15} weight="bold" />
             <span>Search clips</span>
           </LiquidGlass>
-          <LiquidGlass className="liquid-preview-button" interactive>
+          <LiquidGlass className="liquid-preview-button" magnetic>
             <PushPin size={16} weight="fill" />
           </LiquidGlass>
         </div>

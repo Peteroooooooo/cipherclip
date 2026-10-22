@@ -516,6 +516,62 @@ def test_ingest_duplicate_of_older_record_bumps_it_instead_of_adding(tmp_path: P
     assert [record.summary for record in state.storage.load_records()].count("alpha") == 1
 
 
+def test_same_text_copied_with_different_markup_is_one_clip(tmp_path: Path) -> None:
+    # A browser wraps the same words in different markup on every copy.
+    state = build_state(tmp_path)
+    words = "发挥你的聪明才智，你是苹果的前端设计师。"
+    first = state.ingest_capture(
+        ClipboardCapture(text=words, rich_text=f"<span style='color:#111'>{words}</span>", source_app="Google Chrome"),
+        captured_at="2026-10-22T20:33:16",
+    )
+    clip_id = first["recentRecords"][0]["id"]
+    state.ingest_capture(
+        ClipboardCapture(text=words, rich_text=f"<p data-x='2'>{words}</p>", source_app="Google Chrome"),
+        captured_at="2026-10-22T20:35:05",
+    )
+    # The same words as plain text, with other line endings and trailing spaces.
+    again = state.ingest_capture(
+        ClipboardCapture(text=f"  {words}  \r\n", source_app="Notepad"),
+        captured_at="2026-10-22T20:35:22",
+    )
+
+    assert [record["id"] for record in again["recentRecords"]] == [clip_id]
+    latest = again["recentRecords"][0]
+    assert (latest["type"], latest["sourceApp"], latest["updatedAt"]) == ("text", "Notepad", "2026-10-22T20:35:22")
+    assert latest["createdAt"] == "2026-10-22T20:33:16"
+
+
+def test_different_text_with_the_same_words_is_not_merged(tmp_path: Path) -> None:
+    state = build_state(tmp_path)
+    state.ingest_capture(ClipboardCapture(text="a b"), captured_at="2026-10-22T10:00:00")
+    state.ingest_capture(ClipboardCapture(text="a  b"), captured_at="2026-10-22T10:01:00")
+    state.ingest_capture(ClipboardCapture(text="def f():\n    return 1"), captured_at="2026-10-22T10:02:00")
+    after = state.ingest_capture(ClipboardCapture(text="def f():\nreturn 1"), captured_at="2026-10-22T10:03:00")
+
+    # Spaces inside a line (indentation too) count; only the ends of the text and of each line
+    # are trimmed.
+    assert [record["detail"] for record in after["recentRecords"]] == ["def f():\nreturn 1", "def f():\n    return 1", "a  b", "a b"]
+
+
+def test_duplicates_saved_by_an_older_version_are_merged_on_start(tmp_path: Path) -> None:
+    storage = AppStorage(base_path=tmp_path / "data")
+    copies = [sample_record_for_summary("same words", captured_at=f"2026-10-22T20:3{minute}:00") for minute in range(3)]
+    for index, record in enumerate(copies):
+        record.id = f"record-{index}"
+        record.type = "rich_text"
+        record.content_hash = f"markup-{index}"
+    copies[0].pinned = True
+    storage.save_records([*copies, sample_record_for_summary("other", captured_at="2026-10-22T20:40:00")])
+
+    state = AppState(storage=storage, clipboard_service=DummyClipboardService())
+
+    snapshot = state.snapshot()
+    assert [record["id"] for record in snapshot["pinnedRecords"]] == ["record-2"]
+    assert snapshot["pinnedRecords"][0]["createdAt"] == "2026-10-22T20:30:00"
+    assert [record["summary"] for record in snapshot["recentRecords"]] == ["other"]
+    assert len(storage.load_records()) == 2
+
+
 def test_ingest_duplicate_of_pinned_record_keeps_it_pinned(tmp_path: Path) -> None:
     state = build_state(tmp_path)
     created = state.ingest_capture(

@@ -11,6 +11,7 @@ from .app_icons import exe_stem_name
 from .clipboard import ClipboardCapture
 from .clipboard import WindowsClipboardService
 from .clipboard import build_record_from_capture
+from .clipboard import clip_identity
 from .models import DEFAULT_HISTORY_LIMIT
 from .models import HistoryRecord
 from .models import MAX_HISTORY_LIMIT
@@ -50,7 +51,7 @@ class AppState:
         else:
             self.settings = deepcopy(bootstrap_settings)
             self.settings.storage_path = str(self.storage.base_path)
-        self.records = self.storage.load_records()
+        self.records = self._merge_duplicates(self.storage.load_records())
         self.toast: ToastMessage | None = None
         self.deleted_record: HistoryRecord | None = None
         self.deleted_record_image_bytes: bytes | None = None
@@ -123,8 +124,12 @@ class AppState:
                 record.source_icon = self.storage.app_icon(capture.source_exe)
                 self._adopt_source(record, exe_stem_name(capture.source_exe))
 
-            existing_record = self._find_record_by_hash(record.content_hash)
+            existing_record = self._find_same_clip(record)
             if existing_record is not None:
+                if existing_record.type in ("text", "rich_text"):
+                    # The same words copied again keep the latest form (formatted or plain).
+                    for name in ("type", "summary", "detail", "meta", "content_hash", "plain_text", "rich_text"):
+                        setattr(existing_record, name, getattr(record, name))
                 existing_record.updated_at = record.updated_at
                 existing_record.source_app = record.source_app
                 existing_record.source_glyph = record.source_glyph
@@ -354,7 +359,7 @@ class AppState:
         if storage_path != self.storage.base_path:
             previous_storage = self.storage
             target_storage = self._resolve_storage_for_path(storage_path)
-            self.records = self._merge_records(self.records, target_storage.load_records())
+            self.records = self._merge_duplicates(self._merge_records(self.records, target_storage.load_records()))
             self.records = self._migrate_record_images(self.records, target_storage)
             self.storage = target_storage
             # The history moved: leave nothing behind, or switching back later would resurrect
@@ -395,8 +400,28 @@ class AppState:
                 other.source_glyph = record.source_glyph
                 other.source_icon = record.source_icon
 
-    def _find_record_by_hash(self, content_hash: str) -> HistoryRecord | None:
-        return next((record for record in self.records if record.content_hash == content_hash), None)
+    def _find_same_clip(self, record: HistoryRecord) -> HistoryRecord | None:
+        identity = clip_identity(record)
+        return next((other for other in self.records if clip_identity(other) == identity), None)
+
+    @staticmethod
+    def _merge_duplicates(records: list[HistoryRecord]) -> list[HistoryRecord]:
+        """History saved before duplicates were recognised by their text can hold the same clip
+        several times. One record per clip stays: the latest one, pinned if any copy was, with
+        the first copy's creation time."""
+        groups: dict[str, list[HistoryRecord]] = {}
+        for record in records:
+            groups.setdefault(clip_identity(record), []).append(record)
+        kept: list[HistoryRecord] = []
+        for record in records:
+            group = groups[clip_identity(record)]
+            latest = max(group, key=lambda item: item.updated_at)
+            if record is not latest:
+                continue
+            latest.pinned = any(item.pinned for item in group)
+            latest.created_at = min(item.created_at for item in group)
+            kept.append(latest)
+        return kept
 
     def _resolve_storage_for_path(self, storage_path: Path) -> AppStorage:
         if storage_path == self.bootstrap_storage.base_path:

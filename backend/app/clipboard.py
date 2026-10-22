@@ -265,6 +265,9 @@ class WindowsClipboardReader:
             self.kernel32.GlobalUnlock(handle)
 
 
+RICH_TEXT_PLACEHOLDER = "Rich text"
+
+
 def build_record_from_capture(
     capture: ClipboardCapture,
     settings: SettingsState,
@@ -319,7 +322,7 @@ def build_record_from_capture(
     if capture.rich_text and settings.record_rich_text:
         plain_text = (capture.text or _strip_markup(capture.rich_text)).strip()
         if not plain_text:
-            plain_text = "Rich text"
+            plain_text = RICH_TEXT_PLACEHOLDER
         return HistoryRecord(
             id=f"record-{uuid.uuid4().hex}",
             type="rich_text",
@@ -357,6 +360,28 @@ def build_record_from_capture(
         )
 
     return None
+
+
+def clip_identity(record: HistoryRecord) -> str:
+    """What makes two clips the same for the person copying them. For text and rich text that is
+    the text they read: browsers wrap the same words in different markup on every copy (and a
+    plain-text copy of them has none), so the markup cannot tell copies apart."""
+    if record.type in ("text", "rich_text") and not _is_textless_rich_text(record):
+        text = record.plain_text or record.detail
+        return _hash_for_payload("text", _normalize_text(text).encode("utf-8"))
+    return record.content_hash
+
+
+def _normalize_text(text: str) -> str:
+    # Line endings, trailing spaces and non-breaking spaces vary with the app copied from;
+    # spaces inside a line (indentation) do not, and are content.
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").replace("\xa0", " ").split("\n")
+    return "\n".join(line.rstrip() for line in lines).strip()
+
+
+def _is_textless_rich_text(record: HistoryRecord) -> bool:
+    # Rich text without any text (an image in a document, say) is told apart by its markup.
+    return record.type == "rich_text" and record.plain_text == RICH_TEXT_PLACEHOLDER
 
 
 def _has_text(value: str | None) -> bool:

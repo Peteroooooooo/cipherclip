@@ -243,7 +243,7 @@ export function AppearanceSections({ appearance, glassInfo, onChange, onReset }:
             value={appearance.aberrationIntensity}
           />
           <SliderRow
-            description="How far the glass stretches towards the pointer"
+            description="How far a hovered capsule follows the pointer"
             disabled={!liquid || !appearance.animations}
             format={decimal(2)}
             label="Elasticity"

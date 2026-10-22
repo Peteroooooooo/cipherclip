@@ -1,14 +1,12 @@
 // Liquid glass surface, after rdev/liquid-glass-react (MIT, Copyright 2025 Max Rovensky):
-// the same SVG displacement filter with per-channel chromatic aberration, edge-only bending,
-// light-catching rim layers and an elastic pull towards the pointer. Unlike the original it
-// takes part in normal layout (no absolute centring) and drives the pointer-dependent styles
-// through CSS variables, so moving the mouse never re-renders React.
+// the same SVG displacement filter with per-channel chromatic aberration, edge-only bending and
+// light-catching rim layers. Unlike the original it takes part in normal layout (no absolute
+// centring), and instead of its pull towards the pointer it has a hover magnet (magnetize),
+// driven through CSS variables so moving the mouse never re-renders React.
 
 import { useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { LiquidGlassContext } from './liquidContext'
 import { createLiquidMap, type LiquidMaps } from './liquidMaps'
-
-const ACTIVATION_ZONE = 200
 
 interface GlassFilterProps {
   id: string
@@ -106,84 +104,104 @@ function GlassFilter({ id, maps, width, height, displacementScale, aberrationInt
     </svg>
   )
 }
-// One shared pointer listener for every liquid surface on the page. Each surface measures, and
-// hands back its writes; they all run after every surface has measured, so the browser lays the
-// page out once per pointer frame rather than once per surface.
-type PointerListener = (x: number, y: number) => () => void
-const pointerListeners = new Set<PointerListener>()
-let pointerFrame = 0
-let pointerX = 0
-let pointerY = 0
+// Hover magnet, after the glass toolbar capsule design: the hovered capsule swells a little and
+// follows the pointer on a spring, a specular light sits under the pointer, its neighbours in the
+// same `.magnet-group` step back, and a press squeezes it. The pointer is followed only while it
+// is over the capsule (or over its `.magnet-target`, for glass that takes no pointer events).
+const MAGNET_VARS = ['--lg-tx', '--lg-ty', '--lg-sx', '--lg-sy']
+// The magnet's pull at the default elasticity, the design's own numbers.
+const DEFAULT_ELASTICITY = 0.15
 
-function handlePointerMove(event: PointerEvent) {
-  pointerX = event.clientX
-  pointerY = event.clientY
-  if (pointerFrame) {
-    return
-  }
-  pointerFrame = requestAnimationFrame(() => {
-    pointerFrame = 0
-    const writes = [...pointerListeners].map((listener) => listener(pointerX, pointerY))
-    writes.forEach((write) => write())
-  })
+// Where the pointer is, for a capsule that appears under a pointer already resting there.
+let lastPointer: { x: number; y: number } | null = null
+let trackingPointer = false
+
+function trackPointer() {
+  if (trackingPointer || typeof window === 'undefined') return
+  trackingPointer = true
+  window.addEventListener(
+    'pointermove',
+    (event) => {
+      lastPointer = { x: event.clientX, y: event.clientY }
+    },
+    { capture: true, passive: true },
+  )
 }
 
-function subscribePointer(listener: PointerListener) {
-  if (pointerListeners.size === 0) {
-    window.addEventListener('pointermove', handlePointerMove, { passive: true })
+function magnetize(element: HTMLElement, strength: number) {
+  trackPointer()
+  const target = element.closest<HTMLElement>('.magnet-target') ?? element
+  const group = element.closest<HTMLElement>('.magnet-group')
+  let pressed = false
+
+  const place = (x: number, y: number) => {
+    const area = target.getBoundingClientRect()
+    if (!area.width || !area.height) return
+    const nx = ((x - area.left) / area.width - 0.5) * 2
+    const ny = ((y - area.top) / area.height - 0.5) * 2
+    // Round buttons swell more than wide capsules, as in the design.
+    const base = Math.abs(area.width - area.height) < 4 ? 0.1 : 0.045
+    const k = Math.abs(nx) * strength
+    const [sx, sy, tx, ty] = pressed
+      ? [1 - base * 0.6, 1 - base * 0.9, nx * 2 * strength, ny * strength]
+      : [1 + base + k * 0.012, 1 + base - k * 0.008, nx * 4 * strength, ny * 2.5 * strength - 1]
+    const glass = element.getBoundingClientRect()
+    setVar(element, '--lg-sx', sx.toFixed(4))
+    setVar(element, '--lg-sy', sy.toFixed(4))
+    setVar(element, '--lg-tx', `${tx.toFixed(2)}px`)
+    setVar(element, '--lg-ty', `${ty.toFixed(2)}px`)
+    setVar(element, '--lg-spot-x', `${Math.round(x - glass.left)}px`)
+    setVar(element, '--lg-spot-y', `${Math.round(y - glass.top)}px`)
   }
-  pointerListeners.add(listener)
-  return () => {
-    pointerListeners.delete(listener)
-    if (pointerListeners.size === 0) {
-      window.removeEventListener('pointermove', handlePointerMove)
+
+  const enter = (x: number, y: number) => {
+    element.classList.add('is-hovered')
+    group?.classList.add('is-magnet-on')
+    place(x, y)
+  }
+
+  const leave = () => {
+    pressed = false
+    element.classList.remove('is-hovered', 'is-pressed')
+    for (const name of MAGNET_VARS) {
+      element.style.removeProperty(name)
+      writtenVars.get(element)?.delete(name)
     }
-  }
-}
-
-/** Elastic pull + rim light angle for one pointer position, as in liquid-glass-react. */
-function updateLiquidPointer(element: HTMLElement, x: number, y: number, elasticity: number) {
-  const rect = element.getBoundingClientRect()
-  const centerX = rect.left + rect.width / 2
-  const centerY = rect.top + rect.height / 2
-  const deltaX = x - centerX
-  const deltaY = y - centerY
-
-  const edgeX = Math.max(0, Math.abs(deltaX) - rect.width / 2)
-  const edgeY = Math.max(0, Math.abs(deltaY) - rect.height / 2)
-  const edgeDistance = Math.hypot(edgeX, edgeY)
-  const fade = edgeDistance > ACTIVATION_ZONE ? 0 : 1 - edgeDistance / ACTIVATION_ZONE
-
-  let scaleX = 1
-  let scaleY = 1
-  const centerDistance = Math.hypot(deltaX, deltaY)
-  if (fade > 0 && centerDistance > 0) {
-    const nx = Math.abs(deltaX / centerDistance)
-    const ny = Math.abs(deltaY / centerDistance)
-    const stretch = Math.min(centerDistance / 300, 1) * elasticity * fade
-    scaleX = Math.max(0.8, 1 + nx * stretch * 0.3 - ny * stretch * 0.15)
-    scaleY = Math.max(0.8, 1 + ny * stretch * 0.3 - nx * stretch * 0.15)
+    if (group && !group.querySelector('.liquid.is-hovered')) group.classList.remove('is-magnet-on')
   }
 
-  const offsetX = rect.width ? (deltaX / rect.width) * 100 : 0
-  const offsetY = rect.height ? (deltaY / rect.height) * 100 : 0
-  const clampedX = Math.max(-60, Math.min(60, offsetX))
-  const clampedY = Math.max(-60, Math.min(60, offsetY))
+  const onEnter = (event: PointerEvent) => enter(event.clientX, event.clientY)
+  const onMove = (event: PointerEvent) => place(event.clientX, event.clientY)
+  const onDown = (event: PointerEvent) => {
+    pressed = true
+    element.classList.add('is-pressed')
+    place(event.clientX, event.clientY)
+  }
+  const onUp = (event: PointerEvent) => {
+    pressed = false
+    element.classList.remove('is-pressed')
+    place(event.clientX, event.clientY)
+  }
+
+  target.addEventListener('pointerenter', onEnter)
+  target.addEventListener('pointermove', onMove)
+  target.addEventListener('pointerleave', leave)
+  target.addEventListener('pointerdown', onDown)
+  target.addEventListener('pointerup', onUp)
+  if (lastPointer && target.matches(':hover')) enter(lastPointer.x, lastPointer.y)
+
   return () => {
-    setVar(element, '--lg-tx', `${(deltaX * elasticity * 0.1 * fade).toFixed(1)}px`)
-    setVar(element, '--lg-ty', `${(deltaY * elasticity * 0.1 * fade).toFixed(1)}px`)
-    setVar(element, '--lg-sx', scaleX.toFixed(3))
-    setVar(element, '--lg-sy', scaleY.toFixed(3))
-    setVar(element, '--lg-angle', `${(135 + clampedX * 1.2).toFixed(1)}deg`)
-    setVar(element, '--lg-boost', Math.min(1, Math.abs(offsetX) / 100).toFixed(2))
-    setVar(element, '--lg-stop-1', `${Math.max(10, 33 + clampedY * 0.3).toFixed(1)}%`)
-    setVar(element, '--lg-stop-2', `${Math.min(90, 66 + clampedY * 0.4).toFixed(1)}%`)
+    target.removeEventListener('pointerenter', onEnter)
+    target.removeEventListener('pointermove', onMove)
+    target.removeEventListener('pointerleave', leave)
+    target.removeEventListener('pointerdown', onDown)
+    target.removeEventListener('pointerup', onUp)
+    leave()
   }
 }
 
-// Every surface hears every pointer move; most moves leave a given surface's values as they were
-// (the pointer is far off, and they are clamped), and an unchanged write still restyles and
-// repaints it. Rounded to what can be seen, and only written when it changes.
+// Rounded to what can be seen, and only written when it changes: an unchanged write still
+// restyles and repaints.
 const writtenVars = new WeakMap<HTMLElement, Map<string, string>>()
 
 function setVar(element: HTMLElement, name: string, value: string) {
@@ -199,7 +217,7 @@ function setVar(element: HTMLElement, name: string, value: string) {
 
 // A lens: the clear, bright drop of glass that slides over a row of buttons or tabs and
 // magnifies what is under it (polar map, almost no frost). Its movement is driven from outside
-// (useLiquidLens), so it takes no part in the pointer pull.
+// (useLiquidLens).
 const LENS_DISPLACEMENT = 16
 const LENS_BACKDROP = 'blur(0.4px) saturate(180%) brightness(1.14)'
 
@@ -208,8 +226,8 @@ interface LiquidGlassProps {
   className?: string
   /** Corner radius in px; defaults to a capsule. */
   cornerRadius?: number
-  /** Adds the hover/press glow used by clickable surfaces. */
-  interactive?: boolean
+  /** Hover magnet (see magnetize): for capsules the pointer works on. */
+  magnetic?: boolean
   /** "lens": the moving magnifying drop instead of a frosted surface. */
   variant?: 'surface' | 'lens'
   style?: CSSProperties
@@ -220,7 +238,7 @@ export function LiquidGlass({
   children,
   className = '',
   cornerRadius = 999,
-  interactive = false,
+  magnetic = false,
   variant = 'surface',
   style,
   ref,
@@ -231,7 +249,7 @@ export function LiquidGlass({
   const [size, setSize] = useState({ width: 0, height: 0 })
   const liquid = settings.liquidEnabled
   const lens = variant === 'lens'
-  const elastic = liquid && !lens && settings.animations && settings.elasticity > 0
+  const magnet = magnetic && !lens && settings.animations
   const setRoot = (element: HTMLDivElement | null) => {
     rootRef.current = element
     if (typeof ref === 'function') ref(element)
@@ -269,18 +287,11 @@ export function LiquidGlass({
 
   useEffect(() => {
     const element = rootRef.current
-    if (!element) {
+    if (!element || !magnet) {
       return
     }
-    if (!elastic) {
-      for (const name of ['--lg-tx', '--lg-ty', '--lg-sx', '--lg-sy']) {
-        element.style.removeProperty(name)
-        writtenVars.get(element)?.delete(name)
-      }
-      return
-    }
-    return subscribePointer((x, y) => updateLiquidPointer(element, x, y, settings.elasticity))
-  }, [elastic, settings.elasticity])
+    return magnetize(element, settings.elasticity / DEFAULT_ELASTICITY)
+  }, [magnet, settings.elasticity])
 
   // Frost formula from liquid-glass-react: a 4px base blur plus frost.
   const blur = 4 + settings.frost * 32
@@ -295,7 +306,7 @@ export function LiquidGlass({
   const classes = [
     'liquid',
     liquid ? 'is-liquid' : 'is-plain',
-    interactive ? 'is-interactive' : '',
+    magnet ? 'is-magnetic' : '',
     lens ? 'is-lens' : '',
     className,
   ]
@@ -334,7 +345,7 @@ export function LiquidGlass({
       <span aria-hidden="true" className="liquid-shade" />
       <span aria-hidden="true" className="liquid-rim is-screen" />
       <span aria-hidden="true" className="liquid-rim is-overlay" />
-      {interactive ? <span aria-hidden="true" className="liquid-glow" /> : null}
+      {magnet ? <span aria-hidden="true" className="liquid-spot" /> : null}
       {children === undefined ? null : <div className="liquid-content">{children}</div>}
     </div>
   )

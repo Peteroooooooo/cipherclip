@@ -390,8 +390,8 @@ export function QuickPanelView({
 
       {/* One row: pin · type filter · search / recording / settings / close. The gaps between
           them are where the window is dragged from. */}
-      <header className="titlebar window-drag-region">
-        <LiquidGlass className={`pin-glass is-raised ${isAlwaysOnTop ? 'is-on' : ''}`} interactive>
+      <header className="titlebar window-drag-region magnet-group">
+        <LiquidGlass className={`pin-glass is-raised ${isAlwaysOnTop ? 'is-on' : ''}`} magnetic>
           <button
             aria-label="Always on top"
             aria-pressed={isAlwaysOnTop}
@@ -404,7 +404,7 @@ export function QuickPanelView({
           </button>
         </LiquidGlass>
 
-        <LiquidGlass className="filter-glass is-raised">
+        <LiquidGlass className="filter-glass is-raised" magnetic>
           {/* The selected tab sits under a drop of clear glass that slides between tabs. */}
           <div aria-label="Filter by type" className="segmented" ref={filterGroupRef} role="tablist">
             {FILTERS.map((item) => (
@@ -424,7 +424,7 @@ export function QuickPanelView({
           </div>
         </LiquidGlass>
 
-        <LiquidGlass className="header-glass is-raised">
+        <LiquidGlass className="header-glass is-raised" magnetic>
           {/* One lens for the four buttons: it follows the pointer from button to button. */}
           <div className="lens-group" ref={headerGroupRef}>
             <button

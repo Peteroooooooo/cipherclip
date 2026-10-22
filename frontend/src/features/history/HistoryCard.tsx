@@ -187,7 +187,7 @@ export const HistoryCard = memo(function HistoryCard({
         </span>
       </button>
 
-      <div className="card-actions" data-gliding={isActive && capsuleGliding} ref={actionsRef}>
+      <div className="card-actions magnet-target" data-gliding={isActive && capsuleGliding} ref={actionsRef}>
         {/* One capsule of liquid glass for the whole list: the active row hosts it, so it glides
             from row to row. The old one is unmounted at once and the new one glides in from where
             it was, so there is only ever one: kept around (AnimatePresence), Motion stacks the two
@@ -210,8 +210,8 @@ export const HistoryCard = memo(function HistoryCard({
               ref={capsuleRef}
               transition={SPRING_SNAPPY}
             >
-              {/* The same glass as the title bar controls. */}
-              <LiquidGlass className="card-actions-liquid is-raised" />
+              {/* The same glass, and the same hover magnet, as the title bar capsules. */}
+              <LiquidGlass className="card-actions-liquid is-raised" magnetic />
             </motion.div>
           ) : null}
         </PresenceContext.Provider>

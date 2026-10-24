@@ -127,7 +127,7 @@ describe('App shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'ClipDeck' })).toBeInTheDocument()
 
-    await user.hover(screen.getByRole('button', { name: 'ssh deploy@staging-box from Git Bash' }))
+    await user.hover(screen.getByRole('button', { name: 'ssh deploy@staging-box from Windows Terminal' }))
 
     expect(scrollIntoViewSpy).not.toHaveBeenCalled()
   })
@@ -197,7 +197,7 @@ describe('App shell', () => {
     await user.click(screen.getByRole('button', { name: 'Search' }))
     const search = screen.getByRole('textbox', { name: 'Search clipboard history' })
     expect(search).toHaveFocus()
-    await user.type(search, 'Git Bash')
+    await user.type(search, 'Windows Terminal')
 
     const cards = document.querySelectorAll('[data-record-id]')
     expect(cards).toHaveLength(1)

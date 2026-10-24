@@ -1,10 +1,12 @@
 [English](README.en.md)
 
-# ClipDeck
+<p align="center"><img src="assets/clipdeck-icon.png" alt="ClipDeck 图标" width="128"></p>
 
-好看又好用的 Windows 剪贴板。
+<h1 align="center">ClipDeck</h1>
 
-**[在线 Demo](https://peteroooooooo.github.io/clipdeck/)** · **[下载](https://github.com/Peteroooooooo/clipdeck/releases/latest)**
+<p align="center">好看又好用的 Windows 剪贴板。</p>
+
+<p align="center"><b><a href="https://peteroooooooo.github.io/clipdeck/">在线 Demo</a></b> · <b><a href="https://github.com/Peteroooooooo/clipdeck/releases/latest">下载</a></b></p>
 
 <p align="center"><img src="assets/demo-panel.png" alt="ClipDeck 面板" width="400"></p>
 

@@ -1,10 +1,12 @@
 [中文](README.md)
 
-# ClipDeck
+<p align="center"><img src="assets/clipdeck-icon.png" alt="ClipDeck icon" width="128"></p>
 
-A beautiful, useful clipboard for Windows.
+<h1 align="center">ClipDeck</h1>
 
-**[Live demo](https://peteroooooooo.github.io/clipdeck/)** · **[Download](https://github.com/Peteroooooooo/clipdeck/releases/latest)**
+<p align="center">A beautiful, useful clipboard for Windows.</p>
+
+<p align="center"><b><a href="https://peteroooooooo.github.io/clipdeck/">Live demo</a></b> · <b><a href="https://github.com/Peteroooooooo/clipdeck/releases/latest">Download</a></b></p>
 
 <p align="center"><img src="assets/demo-panel.png" alt="The ClipDeck panel" width="400"></p>
 

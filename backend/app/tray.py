@@ -6,7 +6,7 @@ import ctypes
 import pystray
 from PIL import Image
 
-from .brand_icon import draw_icon
+from .brand_icon import load_icon
 from .state import AppState
 
 APP_NAME = "ClipDeck"
@@ -21,6 +21,33 @@ def menu_labels(*, is_recording_paused: bool) -> list[str]:
         "清空全部历史",
         f"退出 {APP_NAME}",
     ]
+
+
+# uxtheme.dll exports these by ordinal only (Windows 10 1903 and later; Explorer and Office use
+# them for their dark menus): SetPreferredAppMode(mode) and FlushMenuThemes().
+_SET_PREFERRED_APP_MODE = 135
+_FLUSH_MENU_THEMES = 136
+_FORCE_DARK = 2
+
+
+def use_dark_menus() -> bool:
+    """Draw this process's native menus (the tray menu) in Windows' dark style instead of the old
+    white one. Undocumented, so any failure just leaves the light menu."""
+    if not hasattr(ctypes, "windll"):
+        return False
+    try:
+        uxtheme = ctypes.WinDLL("uxtheme")
+        set_preferred_app_mode = uxtheme[_SET_PREFERRED_APP_MODE]
+        set_preferred_app_mode.argtypes = [ctypes.c_int]
+        set_preferred_app_mode.restype = ctypes.c_int
+        flush_menu_themes = uxtheme[_FLUSH_MENU_THEMES]
+        flush_menu_themes.argtypes = []
+        flush_menu_themes.restype = None
+        set_preferred_app_mode(_FORCE_DARK)
+        flush_menu_themes()
+        return True
+    except (AttributeError, OSError):
+        return False
 
 
 def confirm_clear_all_history() -> bool:
@@ -59,6 +86,7 @@ class TrayController:
         )
 
     def run(self) -> None:
+        use_dark_menus()
         self.icon.run_detached()
 
     def stop(self) -> None:
@@ -80,7 +108,7 @@ class TrayController:
 
     @staticmethod
     def _create_icon() -> Image.Image:
-        return draw_icon(64)
+        return load_icon(64)
 
     def _handle_open_history(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
         self.state.set_view("panel")

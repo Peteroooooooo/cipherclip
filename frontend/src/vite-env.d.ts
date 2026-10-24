@@ -26,6 +26,7 @@ declare global {
         confirm_clear_all_history: () => Promise<boolean>
         preview_appearance: (appearance: import('./app/types').AppearanceSettings) => Promise<void>
         begin_window_drag: (grabX: number, grabY: number) => Promise<void>
+        page_ready?: () => Promise<void>
       }
     }
   }

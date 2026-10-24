@@ -53,6 +53,32 @@ def resolve_webview_data_path(*, env: Mapping[str, str] | None = None, app_name:
     return path
 
 
+def resolve_window_icon(*, project_root: Path, frozen: bool | None = None) -> str | None:
+    """The ClipDeck icon for the window and its taskbar button when running from source.
+
+    pywebview otherwise takes the icon of the running exe, which from source is python.exe's. The
+    packaged ClipDeck.exe carries the right icon itself, so it needs nothing here.
+    """
+    if is_frozen_runtime() if frozen is None else frozen:
+        return None
+    icon = project_root / "assets" / "clipdeck.ico"
+    return str(icon) if icon.is_file() else None
+
+
+def use_own_taskbar_identity(app_id: str = f"{APP_NAME}.{APP_NAME}") -> None:
+    """From source, give the process its own taskbar identity: otherwise Windows files its window
+    under Python and shows Python's icon on the taskbar button. Must run before any window exists.
+    Not for the packaged exe, whose identity must stay the exe's (pinned shortcuts rely on it)."""
+    if os.name != "nt" or is_frozen_runtime():
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+    except (AttributeError, OSError):
+        pass
+
+
 def resolve_startup_command(
     *,
     project_root: Path,

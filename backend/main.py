@@ -34,6 +34,8 @@ from backend.app.hotkeys import NoopGlobalHotkeyManager
 from backend.app.hotkeys import WindowsGlobalHotkeyManager
 from backend.app.runtime import resolve_startup_command
 from backend.app.runtime import resolve_webview_data_path
+from backend.app.runtime import resolve_window_icon
+from backend.app.runtime import use_own_taskbar_identity
 from backend.app.runtime import START_HIDDEN_FLAG
 from backend.app.runtime_integration import NoopStartupManager
 from backend.app.runtime_integration import RuntimeIntegrationController
@@ -63,6 +65,7 @@ def main(argv: list[str] | None = None) -> None:
         single_instance_manager.stop()
         return
 
+    use_own_taskbar_identity()
     state = AppState()
     bridge = AppBridge(state)
     monitor = ClipboardMonitor(
@@ -81,6 +84,7 @@ def main(argv: list[str] | None = None) -> None:
         hide_on_blur_provider=lambda: True,
         on_blur_hide=state.clear_paste_target,
         appearance_provider=lambda: state.settings.appearance.to_dict(),
+        window_icon=resolve_window_icon(project_root=project_root),
     )
     window_controller.create()
 

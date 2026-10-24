@@ -17,6 +17,14 @@ class AppBridge:
         self._is_always_on_top: Callable[[], bool] | None = None
         self._preview_appearance: Callable[[dict[str, object]], None] | None = None
         self._begin_window_drag: Callable[[float, float], None] | None = None
+        self._conceal_window: Callable[[], None] | None = None
+        self._page_ready: Callable[[], None] | None = None
+
+    def _bind_conceal_window(self, conceal_window: Callable[[], None]) -> None:
+        self._conceal_window = conceal_window
+
+    def _bind_page_ready(self, page_ready: Callable[[], None]) -> None:
+        self._page_ready = page_ready
 
     def _bind_hide_window(self, hide_window: Callable[[], None]) -> None:
         self._hide_window = hide_window
@@ -140,9 +148,17 @@ class AppBridge:
         return self._snapshot()
 
     def hide_window(self) -> None:
+        """Hidden from the page (Esc, close button, click-away): plays the short conceal."""
         self._state.clear_paste_target()
-        if self._hide_window is not None:
+        if self._conceal_window is not None:
+            self._conceal_window()
+        elif self._hide_window is not None:
             self._hide_window()
+
+    def page_ready(self) -> None:
+        """The page has drawn its first frame with data; a normal launch may show the window."""
+        if self._page_ready is not None:
+            self._page_ready()
 
     def pick_storage_path(self, current_path: str) -> str | None:
         if self._pick_storage_path is None:

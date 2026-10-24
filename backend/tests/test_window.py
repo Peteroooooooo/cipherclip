@@ -65,6 +65,7 @@ def test_window_controller_hides_instead_of_closing_when_close_to_tray_is_enable
         close_to_tray_provider=lambda: True,
     )
     controller.window = SimpleNamespace(hide=lambda: hidden.__setitem__("value", True))
+    controller._is_hidden = False
 
     should_cancel = controller._handle_closing()
 
@@ -162,24 +163,228 @@ def test_page_loaded_in_the_tray_sleeps_then_renders_in_the_background():
     assert order[-1] == "warm"
 
 
-def test_page_loaded_on_screen_is_not_put_to_sleep():
-    warmed: list[object] = []
+def test_page_loaded_for_a_normal_launch_renders_hidden_then_shows_when_ready(monkeypatch):
+    import backend.app.window as window_module
+
+    monkeypatch.setattr(window_module, "move_window_near_pointer", lambda _window: None)
+    order: list[str] = []
     controller = AppWindowController(
         project_root=TEST_PROJECT_ROOT,
         bridge=SimpleNamespace(),
         snapshot_provider=lambda: {},
         dev_mode=False,
         start_hidden=False,
+        set_on_top_callback=lambda _window, _enabled: None,
         backdrop_capture=lambda _window, _appearance: None,
-        warm_webview=warmed.append,
+        warm_webview=lambda _window: order.append("warm") or True,
     )
-    scripts: list[str] = []
-    controller.window = SimpleNamespace(evaluate_js=scripts.append)
+    controller.window = SimpleNamespace(
+        evaluate_js=lambda script: order.append(script.split("'")[1]),
+        show=lambda: order.append("show"),
+        restore=lambda: None,
+    )
 
     controller._handle_loaded()
+    assert controller.is_hidden is True
+    assert "show" not in order
 
-    assert warmed == []
-    assert not any("clipdeck:sleep" in script for script in scripts)
+    controller.page_ready()
+
+    assert order[-4:] == ["clipdeck:sleep", "warm", "clipdeck:reveal", "show"]
+    assert controller.is_hidden is False
+    controller.page_ready()
+    assert order.count("show") == 1
+
+
+def test_a_page_that_never_answers_does_not_block_summoning(monkeypatch):
+    import backend.app.window as window_module
+
+    monkeypatch.setattr(window_module, "move_window_near_pointer", lambda _window: None)
+    monkeypatch.setattr(window_module, "JS_CALL_TIMEOUT_S", 0.05)
+    never = threading.Event()
+    shown: list[str] = []
+    controller = AppWindowController(
+        project_root=TEST_PROJECT_ROOT,
+        bridge=SimpleNamespace(),
+        snapshot_provider=lambda: {},
+        dev_mode=False,
+        set_on_top_callback=lambda _window, _enabled: None,
+        backdrop_capture=lambda _window, _appearance: None,
+    )
+    # A dead renderer: pywebview's evaluate_js then waits forever.
+    controller.window = SimpleNamespace(
+        evaluate_js=lambda _script: never.wait(),
+        show=lambda: shown.append("show"),
+        restore=lambda: None,
+    )
+    controller._is_loaded = True
+
+    controller.show()
+
+    assert shown == ["show"]
+    assert controller.is_hidden is False
+
+
+def test_a_crashed_page_is_reloaded_and_brought_back_into_the_window_state(monkeypatch):
+    import backend.app.window as window_module
+
+    monkeypatch.setattr(window_module, "move_window_near_pointer", lambda _window: None)
+    crash_handlers: list[object] = []
+    events: list[str] = []
+    glass: list[float] = []
+    controller = AppWindowController(
+        project_root=TEST_PROJECT_ROOT,
+        bridge=SimpleNamespace(),
+        snapshot_provider=lambda: {},
+        dev_mode=False,
+        set_on_top_callback=lambda _window, _enabled: None,
+        backdrop_capture=lambda _window, _appearance: None,
+        warm_webview=lambda _window: events.append("warm") or True,
+        watch_page=lambda _window, on_crash: crash_handlers.append(on_crash) or True,
+    )
+    controller.window = SimpleNamespace(
+        evaluate_js=lambda script: events.append(script.split("'")[1]),
+        show=lambda: events.append("show"),
+        hide=lambda: events.append("hide"),
+        restore=lambda: None,
+    )
+    controller._glass = SimpleNamespace(
+        mode="live",
+        live_available=True,
+        animate=lambda *, opacity, scale, ms, from_concealed=False: glass.append(opacity),
+    )
+
+    controller._handle_loaded()
+    controller.show()
+    assert len(crash_handlers) == 1
+
+    # Renderer dies while the panel is on screen: the empty glass goes away and nothing is sent
+    # to the page until the reload lands.
+    glass.clear()
+    events.clear()
+    crash_handlers[0]()
+    assert glass == [0.0]
+    controller.hide()
+    controller.show()
+    assert "clipdeck:reveal" not in events
+
+    # The fresh page rests concealed until it reports ready, then page and glass come in together.
+    glass.clear()
+    events.clear()
+    controller._handle_loaded()
+    assert len(crash_handlers) == 1
+    assert "clipdeck:sleep" in events
+    assert glass == []
+    controller.page_ready()
+    assert glass == [1.0]
+    assert events[-1] == "clipdeck:reveal"
+    controller.page_ready()
+    assert events.count("clipdeck:reveal") == 1
+
+
+def test_a_window_shown_before_its_page_loaded_reveals_once_the_page_is_ready(monkeypatch):
+    import backend.app.window as window_module
+
+    monkeypatch.setattr(window_module, "move_window_near_pointer", lambda _window: None)
+    events: list[str] = []
+    glass: list[float] = []
+    controller = AppWindowController(
+        project_root=TEST_PROJECT_ROOT,
+        bridge=SimpleNamespace(),
+        snapshot_provider=lambda: {},
+        dev_mode=False,
+        set_on_top_callback=lambda _window, _enabled: None,
+        backdrop_capture=lambda _window, _appearance: None,
+        watch_page=lambda _window, _on_crash: True,
+    )
+    controller.window = SimpleNamespace(
+        evaluate_js=lambda script: events.append(script.split("'")[1]),
+        show=lambda: events.append("show"),
+        restore=lambda: None,
+    )
+    controller._glass = SimpleNamespace(
+        mode="live",
+        live_available=True,
+        animate=lambda *, opacity, scale, ms, from_concealed=False: glass.append(opacity),
+    )
+
+    controller._show_after_timeout()  # a cold start: the load fallback fires first
+    assert events == ["show"]
+    assert glass == []
+
+    controller._handle_loaded()
+    assert "clipdeck:reveal" not in events
+    controller.page_ready()
+    assert glass == [1.0]
+    assert events[-1] == "clipdeck:reveal"
+
+
+def test_animated_hide_conceals_first_and_hides_after_the_animation(monkeypatch):
+    import backend.app.window as window_module
+
+    monkeypatch.setattr(window_module, "CONCEAL_MS", 10)
+    events: list[str] = []
+    controller = AppWindowController(
+        project_root=TEST_PROJECT_ROOT,
+        bridge=SimpleNamespace(),
+        snapshot_provider=lambda: {},
+        dev_mode=False,
+        set_on_top_callback=lambda _window, _enabled: None,
+        backdrop_capture=lambda _window, _appearance: None,
+    )
+    controller.window = SimpleNamespace(
+        evaluate_js=lambda script: events.append(script.split("'")[1]),
+        show=lambda: events.append("show"),
+        hide=lambda: events.append("hide"),
+        restore=lambda: None,
+    )
+    controller._is_loaded = True
+    controller._is_hidden = False
+
+    controller.hide(animated=True)
+    assert controller.is_hidden is True
+    import time
+
+    deadline = time.time() + 2
+    while "clipdeck:sleep" not in events and time.time() < deadline:
+        time.sleep(0.01)
+
+    assert events.index("clipdeck:conceal") < events.index("hide") < events.index("clipdeck:sleep")
+
+
+def test_summoning_during_the_conceal_cancels_the_hide(monkeypatch):
+    import backend.app.window as window_module
+
+    monkeypatch.setattr(window_module, "CONCEAL_MS", 50)
+    moved: list[object] = []
+    monkeypatch.setattr(window_module, "move_window_near_pointer", moved.append)
+    events: list[str] = []
+    controller = AppWindowController(
+        project_root=TEST_PROJECT_ROOT,
+        bridge=SimpleNamespace(),
+        snapshot_provider=lambda: {},
+        dev_mode=False,
+        set_on_top_callback=lambda _window, _enabled: None,
+        backdrop_capture=lambda _window, _appearance: None,
+    )
+    controller.window = SimpleNamespace(
+        evaluate_js=lambda script: events.append(script.split("'")[1]),
+        show=lambda: events.append("show"),
+        hide=lambda: events.append("hide"),
+        restore=lambda: None,
+    )
+    controller._is_loaded = True
+    controller._is_hidden = False
+
+    controller.hide(animated=True)
+    controller.show()
+    import time
+
+    time.sleep(0.15)
+
+    assert "hide" not in events
+    assert moved == []  # reverses in place
+    assert controller.is_hidden is False
 
 
 def test_window_controller_can_toggle_always_on_top_for_current_run():
@@ -346,7 +551,7 @@ def test_backdrop_payload_carries_image_and_alignment_in_physical_pixels():
     assert (payload["windowLeft"], payload["windowTop"]) == (-1500, 200)
 
 
-def test_showing_a_hidden_window_reveals_it_first_then_sends_the_desktop_backdrop(monkeypatch):
+def test_showing_a_hidden_window_wakes_the_page_before_showing_then_updates_backdrop(monkeypatch):
     import backend.app.window as window_module
 
     monkeypatch.setattr(window_module, "move_window_near_pointer", lambda _window: None)
@@ -369,7 +574,7 @@ def test_showing_a_hidden_window_reveals_it_first_then_sends_the_desktop_backdro
 
     controller.show()
 
-    assert events == ["show", "clipdeck:reveal", "clipdeck:backdrop"]
+    assert events == ["clipdeck:reveal", "show", "clipdeck:backdrop"]
 
 
 def test_appearance_settings_fill_defaults_and_clamp_hand_edited_values():

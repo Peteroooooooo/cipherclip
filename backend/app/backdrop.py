@@ -40,6 +40,11 @@ VK_RBUTTON = 0x02
 CURSOR_GAP = 12
 
 
+# Reveal / conceal motion shared by the native glass and the page (panelReveal.ts).
+CONCEAL_SCALE = 0.97
+REVEAL_MS = 260
+CONCEAL_MS = 130
+
 GLASS_LIVE = "live"
 GLASS_SNAPSHOT = "snapshot"
 
@@ -88,6 +93,25 @@ class GlassBackdrop:
         _invoke(self._form, apply)
         self.mode = GLASS_LIVE if enabled else GLASS_SNAPSHOT
         return self.mode
+
+    def animate(self, *, opacity: float, scale: float, ms: int, from_concealed: bool = False) -> None:
+        """Fade/scale the whole native glass on the compositor, in step with the page's reveal and
+        conceal animations. No-op with an older helper DLL."""
+        if self._live_dll is None or not hasattr(self._live_dll, "cc_live_backdrop_animate"):
+            return
+
+        def apply() -> None:
+            self._live_dll.cc_live_backdrop_animate(
+                ctypes.c_float(opacity),
+                ctypes.c_float(scale),
+                int(ms),
+                ctypes.c_float(self._form.Width / 2),
+                ctypes.c_float(self._form.Height / 2),
+                1 if from_concealed else 0,
+                ctypes.c_float(CONCEAL_SCALE),
+            )
+
+        _invoke(self._form, apply)
 
     def set_live_strength(self, strength: float) -> None:
         """Fade the live blur between none (0, the desktop shows through sharp) and Windows' full,
@@ -221,6 +245,16 @@ def _load_live_backdrop():
         dll.cc_live_filter_start.restype = ctypes.c_int
         dll.cc_live_filter_set.argtypes = [ctypes.c_float] * 2
         dll.cc_live_filter_status.restype = ctypes.c_int
+    if hasattr(dll, "cc_live_backdrop_animate"):
+        dll.cc_live_backdrop_animate.argtypes = [
+            ctypes.c_float,
+            ctypes.c_float,
+            ctypes.c_int,
+            ctypes.c_float,
+            ctypes.c_float,
+            ctypes.c_int,
+            ctypes.c_float,
+        ]
     if hasattr(dll, "cc_window_drag_begin"):
         dll.cc_window_drag_begin.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int]
         dll.cc_window_drag_begin.restype = ctypes.c_int

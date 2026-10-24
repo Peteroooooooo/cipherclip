@@ -46,13 +46,22 @@ def test_tray_controller_uses_localized_title_and_brand_icon() -> None:
 
     assert tray.icon.title == TRAY_TITLE
 
-    # The ClipDeck icon: a graphite tile, transparent corners, a near-white front card in the middle.
+    # The ClipDeck icon (small-size cut): a night tile with transparent corners, a black board in an
+    # aurora frame filling most of it, and a white-grey key block across the board's top.
     image = tray._create_icon()
     assert image.size == (64, 64)
     assert image.getpixel((0, 0))[3] == 0
-    red, green, blue, alpha = image.getpixel((32, 44))
-    assert alpha == 255 and min(red, green, blue) > 230
-    assert max(image.getpixel((32, 60))[:3]) < 80
+    red, green, blue, alpha = image.getpixel((32, 21))
+    assert alpha == 255 and min(red, green, blue) > 190
+    assert max(image.getpixel((32, 27))[:3]) < 60
+    edge = image.getpixel((5, 32))
+    assert edge[3] == 255 and max(edge[:3]) < 60
+
+
+def test_dark_menus_never_raise() -> None:
+    from backend.app.tray import use_dark_menus
+
+    assert use_dark_menus() in (True, False)
 
 
 def test_tray_clear_all_history_requires_confirmation() -> None:

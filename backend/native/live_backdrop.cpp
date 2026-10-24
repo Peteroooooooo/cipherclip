@@ -841,6 +841,50 @@ extern "C" __declspec(dllexport) int cc_window_drag_begin(HWND hwnd, int grabX, 
     return 0;
 }
 
+// Fades and scales the whole glass (host backdrop and filtered glass) to `opacity` / `scale` over
+// `ms` milliseconds on the compositor, around (centerX, centerY) in physical pixels, so it moves
+// together with the page's own reveal and conceal animations. `fromConcealed` first snaps it to
+// the concealed look (opacity 0, `concealScale`) so a reveal always starts from nothing.
+// ms <= 0 sets the values immediately.
+extern "C" __declspec(dllexport) void cc_live_backdrop_animate(
+    float opacity, float scale, int ms, float centerX, float centerY, int fromConcealed, float concealScale) {
+    if (g_backdrop == nullptr) {
+        return;
+    }
+    try {
+        auto& root = g_backdrop->root;
+        auto const compositor = g_backdrop->compositor;
+        root.CenterPoint(float3{centerX, centerY, 0.0f});
+        root.StopAnimation(L"Opacity");
+        root.StopAnimation(L"Scale");
+        if (fromConcealed != 0) {
+            root.Opacity(0.0f);
+            root.Scale(float3{concealScale, concealScale, 1.0f});
+        }
+        if (ms <= 0) {
+            root.Opacity(opacity);
+            root.Scale(float3{scale, scale, 1.0f});
+            return;
+        }
+        bool const entering = opacity >= 0.5f;
+        auto const easing = entering
+            ? compositor.CreateCubicBezierEasingFunction(float2{0.2f, 0.9f}, float2{0.25f, 1.0f})
+            : compositor.CreateCubicBezierEasingFunction(float2{0.4f, 0.0f}, float2{1.0f, 1.0f});
+        auto const duration = std::chrono::milliseconds(ms);
+
+        auto fade = compositor.CreateScalarKeyFrameAnimation();
+        fade.InsertKeyFrame(1.0f, opacity, easing);
+        fade.Duration(duration);
+        root.StartAnimation(L"Opacity", fade);
+
+        auto grow = compositor.CreateVector3KeyFrameAnimation();
+        grow.InsertKeyFrame(1.0f, float3{scale, scale, 1.0f}, easing);
+        grow.Duration(duration);
+        root.StartAnimation(L"Scale", grow);
+    } catch (...) {
+    }
+}
+
 // The host backdrop brush has one fixed blur strength. Fading the visual out (0..1) is the only
 // way to get less: at 0 the transparent window shows the desktop unblurred. Fallback path only.
 extern "C" __declspec(dllexport) void cc_live_backdrop_set_opacity(float opacity) {

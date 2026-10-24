@@ -215,6 +215,8 @@ export function QuickPanelView({
   // The search bar drips out of the magnifier: it falls as a drop, then spreads sideways into a
   // bar. Closing runs the same path backwards and lifts it back into the magnifier.
   const animatedOpen = useRef(false)
+  // Which open/close run is current: a run that was cut short must not tidy up after the next one.
+  const barRun = useRef(0)
   // Read inside the close animation's callback, which may finish after the search reopened.
   const searchOpenRef = useRef(searchOpen)
   useLayoutEffect(() => {
@@ -238,37 +240,81 @@ export function QuickPanelView({
     const dropX = magBox.left + magBox.width / 2 - DROP / 2 - (rowBox.left + BAR_INSET_X)
     const dropY = magBox.top + magBox.height / 2 - DROP / 2 - (rowBox.top + BAR_INSET_Y)
     const instant = motionOff()
+    const run = ++barRun.current
+
+    // Clicked again mid-animation: carry on from wherever the bar is, never from the start.
+    const box = bar.getBoundingClientRect()
+    const at = {
+      x: box.left - (rowBox.left + BAR_INSET_X),
+      y: box.top - (rowBox.top + BAR_INSET_Y),
+      width: box.width,
+      height: box.height,
+      opacity: Number(getComputedStyle(bar).opacity) || 0,
+    }
+    const visible = at.opacity > 0.02
+    // Still a drop (falling from or rising to the magnifier), not yet a bar.
+    const isDrop = at.width < DROP + 6
+    // How far the drop has fallen towards the row, 0 at the magnifier.
+    const fallen = dropY === 0 ? 1 : Math.min(1, Math.max(0, (dropY - at.y) / dropY))
 
     if (searchOpen) {
-      void animateBar(
-        bar,
-        {
-          x: [dropX, dropX, 0],
-          y: [dropY, 0, 0],
-          width: [DROP, DROP, fullWidth],
-          height: [DROP, DROP + 4, BAR_HEIGHT],
-          opacity: [0, 1, 1],
-        },
-        { duration: instant ? 0 : 0.62, times: [0, 0.38, 1], ease: ['easeIn', [0.34, 1.32, 0.64, 1]] },
-      ).then(() => {
+      const spread = { duration: instant ? 0 : 0.62, ease: [0.34, 1.32, 0.64, 1] as const }
+      const opened = () => {
+        if (barRun.current !== run) return
         // Back to the stylesheet's size, so the bar follows the window if it is resized.
         bar.style.width = ''
         bar.style.height = ''
-      })
+      }
+      if (visible && !isDrop) {
+        // Was folding back as a bar: spread straight out again.
+        void animateBar(
+          bar,
+          { x: 0, y: 0, width: fullWidth, height: BAR_HEIGHT, opacity: 1 },
+          { duration: instant ? 0 : 0.42, ease: spread.ease },
+        ).then(opened)
+        return
+      }
+      const from = visible ? at : { x: dropX, y: dropY, width: DROP, height: DROP, opacity: 0 }
+      const fall = visible ? 1 - fallen : 1
+      const duration = instant ? 0 : 0.24 * fall + 0.38
+      void animateBar(
+        bar,
+        {
+          x: [from.x, dropX, 0],
+          y: [from.y, 0, 0],
+          width: [from.width, DROP, fullWidth],
+          height: [from.height, DROP + 4, BAR_HEIGHT],
+          opacity: [from.opacity, 1, 1],
+        },
+        { duration, times: [0, (0.24 * fall) / (0.24 * fall + 0.38), 1], ease: ['easeIn', spread.ease] },
+      ).then(opened)
       return
     }
 
+    const closed = () => {
+      if (barRun.current !== run) return
+      setSearchShown((shown) => (searchOpenRef.current ? shown : false))
+    }
+    if (isDrop) {
+      // Still falling out of the magnifier: lift it straight back in.
+      void animateBar(
+        bar,
+        { x: dropX, y: dropY, width: DROP, height: DROP, opacity: 0 },
+        { duration: instant ? 0 : 0.18 + 0.12 * fallen, ease: 'easeIn' },
+      ).then(closed)
+      return
+    }
     void animateBar(
       bar,
       {
-        x: [0, dropX, dropX],
-        y: [0, 0, dropY],
-        width: [bar.offsetWidth, DROP, DROP],
-        height: [BAR_HEIGHT, DROP + 4, DROP],
-        opacity: [1, 1, 0],
+        x: [at.x, dropX, dropX],
+        y: [at.y, 0, dropY],
+        width: [at.width, DROP, DROP],
+        height: [at.height, DROP + 4, DROP],
+        opacity: [at.opacity, 1, 0],
       },
       { duration: instant ? 0 : 0.5, times: [0, 0.55, 1], ease: ['easeInOut', 'easeIn'] },
-    ).then(() => setSearchShown((shown) => (searchOpenRef.current ? shown : false)))
+    ).then(closed)
   }, [searchOpen, animateBar, barRef])
 
   function openSearch() {

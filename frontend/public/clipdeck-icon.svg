@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ClipDeck app icon, 512x512 master. scripts/make-icon.py renders every icon file from it. -->
+<svg id="clipdeck-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="ClipDeck">
+  <defs>
+    <!-- Night background -->
+    <radialGradient id="cd-night" cx="0.5" cy="0.12" r="0.98">
+      <stop offset="0" stop-color="#303038"/>
+      <stop offset="0.55" stop-color="#141417"/>
+      <stop offset="1" stop-color="#060607"/>
+    </radialGradient>
+    <!-- Aurora, top-left → bottom-right, the panel's --glow-colors -->
+    <linearGradient id="cd-aurora" gradientUnits="userSpaceOnUse" x1="136" y1="98" x2="376" y2="402">
+      <stop offset="0" stop-color="#8EF6FF"/>
+      <stop offset="0.22" stop-color="#9FD0FF"/>
+      <stop offset="0.45" stop-color="#CFA8FF"/>
+      <stop offset="0.68" stop-color="#FF9FD2"/>
+      <stop offset="0.86" stop-color="#FFB38A"/>
+      <stop offset="1" stop-color="#F4FFA0"/>
+    </linearGradient>
+    <!-- White → grey button block -->
+    <linearGradient id="cd-key" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#B8BBC6"/>
+    </linearGradient>
+    <linearGradient id="cd-keyhi" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="cd-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="11"/>
+    </filter>
+    <filter id="cd-keyshadow" x="-30%" y="-60%" width="160%" height="260%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <clipPath id="cd-shape">
+      <path id="cd-squircle" d="M496.0 256.0 L495.9 321.7 L495.7 342.7 L495.3 357.9 L494.8 370.3 L494.1 380.8 L493.3 390.1 L492.4 398.5 L491.2 406.0 L490.0 413.0 L488.5 419.4 L486.9 425.4 L485.2 431.0 L483.3 436.2 L481.2 441.1 L478.9 445.7 L476.5 450.0 L473.9 454.1 L471.1 457.9 L468.1 461.5 L464.9 464.9 L461.5 468.1 L457.9 471.1 L454.1 473.9 L450.0 476.5 L445.7 478.9 L441.1 481.2 L436.2 483.3 L431.0 485.2 L425.4 486.9 L419.4 488.5 L413.0 490.0 L406.0 491.2 L398.5 492.4 L390.1 493.3 L380.8 494.1 L370.3 494.8 L357.9 495.3 L342.7 495.7 L321.7 495.9 L256.0 496.0 L190.3 495.9 L169.3 495.7 L154.1 495.3 L141.7 494.8 L131.2 494.1 L121.9 493.3 L113.5 492.4 L106.0 491.2 L99.0 490.0 L92.6 488.5 L86.6 486.9 L81.0 485.2 L75.8 483.3 L70.9 481.2 L66.3 478.9 L62.0 476.5 L57.9 473.9 L54.1 471.1 L50.5 468.1 L47.1 464.9 L43.9 461.5 L40.9 457.9 L38.1 454.1 L35.5 450.0 L33.1 445.7 L30.8 441.1 L28.7 436.2 L26.8 431.0 L25.1 425.4 L23.5 419.4 L22.0 413.0 L20.8 406.0 L19.6 398.5 L18.7 390.1 L17.9 380.8 L17.2 370.3 L16.7 357.9 L16.3 342.7 L16.1 321.7 L16.0 256.0 L16.1 190.3 L16.3 169.3 L16.7 154.1 L17.2 141.7 L17.9 131.2 L18.7 121.9 L19.6 113.5 L20.8 106.0 L22.0 99.0 L23.5 92.6 L25.1 86.6 L26.8 81.0 L28.7 75.8 L30.8 70.9 L33.1 66.3 L35.5 62.0 L38.1 57.9 L40.9 54.1 L43.9 50.5 L47.1 47.1 L50.5 43.9 L54.1 40.9 L57.9 38.1 L62.0 35.5 L66.3 33.1 L70.9 30.8 L75.8 28.7 L81.0 26.8 L86.6 25.1 L92.6 23.5 L99.0 22.0 L106.0 20.8 L113.5 19.6 L121.9 18.7 L131.2 17.9 L141.7 17.2 L154.1 16.7 L169.3 16.3 L190.3 16.1 L256.0 16.0 L321.7 16.1 L342.7 16.3 L357.9 16.7 L370.3 17.2 L380.8 17.9 L390.1 18.7 L398.5 19.6 L406.0 20.8 L413.0 22.0 L419.4 23.5 L425.4 25.1 L431.0 26.8 L436.2 28.7 L441.1 30.8 L445.7 33.1 L450.0 35.5 L454.1 38.1 L457.9 40.9 L461.5 43.9 L464.9 47.1 L468.1 50.5 L471.1 54.1 L473.9 57.9 L476.5 62.0 L478.9 66.3 L481.2 70.9 L483.3 75.8 L485.2 81.0 L486.9 86.6 L488.5 92.6 L490.0 99.0 L491.2 106.0 L492.4 113.5 L493.3 121.9 L494.1 131.2 L494.8 141.7 L495.3 154.1 L495.7 169.3 L495.9 190.3Z"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#cd-shape)">
+    <rect width="512" height="512" fill="url(#cd-night)"/>
+
+    <!-- Aurora glow under the frame -->
+    <rect x="150" y="112" width="212" height="276" rx="46" fill="none" stroke="url(#cd-aurora)" stroke-width="28" opacity="0.85" filter="url(#cd-glow)"/>
+    <!-- Board frame: aurora outline, black inside -->
+    <rect x="150" y="112" width="212" height="276" rx="46" fill="#0E0E11" stroke="url(#cd-aurora)" stroke-width="28"/>
+
+    <!-- White-grey button block in the upper half -->
+    <g filter="url(#cd-keyshadow)">
+      <rect x="186" y="150" width="140" height="58" rx="22" fill="url(#cd-key)"/>
+    </g>
+    <rect x="187.5" y="151.5" width="137" height="55" rx="20.5" fill="none" stroke="url(#cd-keyhi)" stroke-width="3"/>
+
+    <!-- Content lines, same aurora -->
+    <rect x="190" y="244" width="132" height="18" rx="9" fill="url(#cd-aurora)"/>
+    <rect x="190" y="286" width="132" height="18" rx="9" fill="url(#cd-aurora)"/>
+    <rect x="190" y="328" width="84" height="18" rx="9" fill="url(#cd-aurora)"/>
+  </g>
+  <path d="M494.5 256.0 L494.4 321.3 L494.2 342.2 L493.8 357.3 L493.3 369.6 L492.7 380.0 L491.8 389.3 L490.9 397.6 L489.8 405.1 L488.5 412.0 L487.1 418.4 L485.5 424.4 L483.7 429.9 L481.8 435.1 L479.8 440.0 L477.5 444.5 L475.1 448.8 L472.5 452.9 L469.8 456.7 L466.8 460.3 L463.6 463.6 L460.3 466.8 L456.7 469.8 L452.9 472.5 L448.8 475.1 L444.5 477.5 L440.0 479.8 L435.1 481.8 L429.9 483.7 L424.4 485.5 L418.4 487.1 L412.0 488.5 L405.1 489.8 L397.6 490.9 L389.3 491.8 L380.0 492.7 L369.6 493.3 L357.3 493.8 L342.2 494.2 L321.3 494.4 L256.0 494.5 L190.7 494.4 L169.8 494.2 L154.7 493.8 L142.4 493.3 L132.0 492.7 L122.7 491.8 L114.4 490.9 L106.9 489.8 L100.0 488.5 L93.6 487.1 L87.6 485.5 L82.1 483.7 L76.9 481.8 L72.0 479.8 L67.5 477.5 L63.2 475.1 L59.1 472.5 L55.3 469.8 L51.7 466.8 L48.4 463.6 L45.2 460.3 L42.2 456.7 L39.5 452.9 L36.9 448.8 L34.5 444.5 L32.2 440.0 L30.2 435.1 L28.3 429.9 L26.5 424.4 L24.9 418.4 L23.5 412.0 L22.2 405.1 L21.1 397.6 L20.2 389.3 L19.3 380.0 L18.7 369.6 L18.2 357.3 L17.8 342.2 L17.6 321.3 L17.5 256.0 L17.6 190.7 L17.8 169.8 L18.2 154.7 L18.7 142.4 L19.3 132.0 L20.2 122.7 L21.1 114.4 L22.2 106.9 L23.5 100.0 L24.9 93.6 L26.5 87.6 L28.3 82.1 L30.2 76.9 L32.2 72.0 L34.5 67.5 L36.9 63.2 L39.5 59.1 L42.2 55.3 L45.2 51.7 L48.4 48.4 L51.7 45.2 L55.3 42.2 L59.1 39.5 L63.2 36.9 L67.5 34.5 L72.0 32.2 L76.9 30.2 L82.1 28.3 L87.6 26.5 L93.6 24.9 L100.0 23.5 L106.9 22.2 L114.4 21.1 L122.7 20.2 L132.0 19.3 L142.4 18.7 L154.7 18.2 L169.8 17.8 L190.7 17.6 L256.0 17.5 L321.3 17.6 L342.2 17.8 L357.3 18.2 L369.6 18.7 L380.0 19.3 L389.3 20.2 L397.6 21.1 L405.1 22.2 L412.0 23.5 L418.4 24.9 L424.4 26.5 L429.9 28.3 L435.1 30.2 L440.0 32.2 L444.5 34.5 L448.8 36.9 L452.9 39.5 L456.7 42.2 L460.3 45.2 L463.6 48.4 L466.8 51.7 L469.8 55.3 L472.5 59.1 L475.1 63.2 L477.5 67.5 L479.8 72.0 L481.8 76.9 L483.7 82.1 L485.5 87.6 L487.1 93.6 L488.5 100.0 L489.8 106.9 L490.9 114.4 L491.8 122.7 L492.7 132.0 L493.3 142.4 L493.8 154.7 L494.2 169.8 L494.4 190.7Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="3"/>
+</svg>

@@ -1,9 +1,9 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react'
 import { MotionConfig, motion } from 'motion/react'
 import { QuickPanelView } from '../features/panel/QuickPanelView'
 import { SettingsView, type GlassInfo } from '../features/settings/SettingsView'
 import { LiquidGlassContext } from '../shared/ui/liquid/liquidContext'
-import { SPRING_SMOOTH, SPRING_SMOOTH_EASING } from '../shared/ui/motionTokens'
+import { SPRING_SMOOTH } from '../shared/ui/motionTokens'
 import { ToastHost } from '../shared/ui/ToastHost'
 import { applyAppearance, DEFAULT_APPEARANCE } from './appearance'
 import { desktopApi, subscribeSnapshot } from './pywebview'
@@ -11,6 +11,8 @@ import type { AppearanceSettings, AppSnapshot, SettingsState } from './types'
 
 // How long slider drags settle before the native window (live blur, snapshot) is updated.
 const NATIVE_PREVIEW_DELAY_MS = 220
+const PAGE_SETTLE_CALM_MS = 150
+const PAGE_SETTLE_CAP_MS = 1500
 
 // Settings slides "forward" (zooms in from slightly larger), the panel comes back from slightly smaller.
 const VIEW_ENTER = {
@@ -24,44 +26,11 @@ const VIEW_TRANSITION = {
   filter: { duration: 0.28, ease: 'easeOut' },
 } as const
 
-/** Materialise the window contents when the backend shows a hidden window. */
-function playReveal(element: HTMLElement | null) {
-  if (!element || typeof element.animate !== 'function') {
-    return
-  }
-  if (
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ||
-    document.documentElement.classList.contains('no-motion')
-  ) {
-    return
-  }
-
-  element.animate(
-    [
-      { opacity: 0, transform: 'scale(0.97)', filter: 'blur(6px)' },
-      { opacity: 1, transform: 'none', filter: 'blur(0px)' },
-    ],
-    { duration: 520, easing: SPRING_SMOOTH_EASING },
-  )
-  element.querySelectorAll<HTMLElement>('.panel-card').forEach((card, index) => {
-    if (index > 9) {
-      return
-    }
-    card.animate([{ opacity: 0, translate: '0 10px' }, { opacity: 1, translate: '0 0' }], {
-      duration: 480,
-      delay: 40 + index * 28,
-      easing: SPRING_SMOOTH_EASING,
-      fill: 'backwards',
-    })
-  })
-}
-
 function App() {
   const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null)
   // Unsaved appearance from the settings page, shown live until saved or cancelled.
   const [previewAppearance, setPreviewAppearance] = useState<AppearanceSettings | null>(null)
   const [glassInfo, setGlassInfo] = useState<GlassInfo>({ mode: null, liveAvailable: false })
-  const frameRef = useRef<HTMLDivElement | null>(null)
 
   const savedAppearance = snapshot?.settings.appearance ?? DEFAULT_APPEARANCE
   // Only the settings page previews; anywhere else the saved look applies.
@@ -116,13 +85,6 @@ function App() {
   }, [strandedPreview, savedAppearanceKey])
 
   useEffect(() => {
-    // Waking the page from its sleep in the tray is panelSleep.ts's.
-    const handleReveal = () => playReveal(frameRef.current)
-    window.addEventListener('clipdeck:reveal', handleReveal)
-    return () => window.removeEventListener('clipdeck:reveal', handleReveal)
-  }, [])
-
-  useEffect(() => {
     let mounted = true
 
     desktopApi.getAppState().then((nextSnapshot) => {
@@ -146,6 +108,36 @@ function App() {
       unsubscribe()
     }
   }, [])
+
+  const hasSnapshot = snapshot !== null
+  useEffect(() => {
+    if (!hasSnapshot) {
+      return
+    }
+    // A normal launch shows the window only once the panel has settled. Right after the first
+    // snapshot, cards are still arriving and nothing is painted yet (measured: ~0.35 s of empty
+    // glass, then the list sliding into place); so wait for the same cards over a stretch of
+    // smooth frames (frames stall while the panel is still being rasterized). Capped, so a busy
+    // machine still shows the panel.
+    let frame = 0
+    const started = performance.now()
+    let cards = -1
+    let last = started
+    let calmSince = started
+    const tick = (now: number) => {
+      const count = document.querySelectorAll('.panel-card').length
+      if (count !== cards || now - last > 50) calmSince = now
+      cards = count
+      last = now
+      if (now - calmSince >= PAGE_SETTLE_CALM_MS || now - started >= PAGE_SETTLE_CAP_MS) {
+        void desktopApi.pageReady()
+        return
+      }
+      frame = window.requestAnimationFrame(tick)
+    }
+    frame = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(frame)
+  }, [hasSnapshot])
 
   const syncSnapshot = useCallback(async (promise: Promise<AppSnapshot>) => {
     const nextSnapshot = await promise
@@ -238,7 +230,7 @@ function App() {
           }
         }}
       >
-        <div className="glass-window" data-view={snapshot.view} ref={frameRef}>
+        <div className="glass-window" data-view={snapshot.view}>
           <div aria-hidden="true" className="glass-backdrop" />
           {/* transitionEnd drops the filter afterwards: a lingering filter would keep the whole
               view on its own render surface and isolate it from backdrop-filter glass. */}

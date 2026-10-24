@@ -6,6 +6,17 @@ from backend.app.hotkeys import parse_shortcut_binding
 from backend.app.runtime import resolve_default_storage_path
 from backend.app.runtime import resolve_webview_data_path
 from backend.app.runtime import resolve_startup_command
+from backend.app.runtime import resolve_window_icon
+
+
+def test_window_icon_is_the_clipdeck_icon_from_source_and_the_exe_own_when_packaged(tmp_path: Path) -> None:
+    icon = tmp_path / "assets" / "clipdeck.ico"
+    icon.parent.mkdir()
+    icon.write_bytes(b"\0")
+
+    assert resolve_window_icon(project_root=tmp_path, frozen=False) == str(icon)
+    assert resolve_window_icon(project_root=tmp_path, frozen=True) is None
+    assert resolve_window_icon(project_root=tmp_path / "missing", frozen=False) is None
 from backend.app.runtime_integration import RuntimeIntegrationController
 
 TEST_PROJECT_ROOT = Path("C:/workspace/ClipDeck")

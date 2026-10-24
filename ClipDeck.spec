@@ -11,6 +11,8 @@ frontend_dist = project_root / "frontend" / "dist"
 
 datas = collect_data_files("webview")
 datas.append((str(frontend_dist), "frontend/dist"))
+# The tray icon (backend/app/brand_icon.py).
+datas.append((str(project_root / "assets" / "clipdeck-icon-small.png"), "assets"))
 
 binaries = collect_dynamic_libs("webview")
 

@@ -1003,8 +1003,11 @@ html.glass-live .liquid.is-raised > .liquid-warp {
   height: 100%;
 }
 
+/* min-width 0: as a flex item it would otherwise never shrink below the input's own width
+   (~200px), and the drop the bar starts and ends as was drawn as that wide capsule. */
 .search-glass {
   flex: 1;
+  min-width: 0;
   height: 100%;
 }
 
@@ -1095,15 +1098,15 @@ html.glass-live .liquid.is-raised > .liquid-warp {
 
 .edge-glow.is-active {
   opacity: 1;
-  transition-duration: 0.45s;
+  transition-duration: 0.3s;
 }
 
 /* The glow only moves while it can be seen (lit, or fading out: is-fading, EdgeGlow.tsx). Its
    rings repaint every frame they move, so left running unseen they cost as much as visible. */
 .edge-glow.is-active,
 .edge-glow.is-fading {
-  /* The colours drift slowly round the window, all rings together. */
-  animation: edge-glow-spin 22s linear infinite;
+  /* The colours run round the window, all rings together. */
+  animation: edge-glow-spin 9s linear infinite;
 }
 
 .edge-glow > i {
@@ -1119,8 +1122,8 @@ html.glass-live .liquid.is-raised > .liquid-warp {
 .edge-glow.is-active > i,
 .edge-glow.is-fading > i {
   animation:
-    edge-glow-bloom 1.3s cubic-bezier(0.2, 0.8, 0.2, 1) both,
-    edge-glow-breathe 3.2s ease-in-out 1.3s infinite alternate;
+    edge-glow-bloom 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    edge-glow-breathe 2s ease-in-out 0.8s infinite alternate;
 }
 
 .edge-glow > i::before {
@@ -2482,6 +2485,16 @@ html.is-asleep *,
 html.is-asleep *::before,
 html.is-asleep *::after {
   animation-play-state: paused !important;
+}
+
+/* Hidden in the tray the panel rests at the start of its reveal (panelSleep.ts), so the first
+   frame shown on a summon is already this, not the panel as it was when it was hidden.
+   Not exactly 0: Chromium skips painting fully transparent content, so the first summon would
+   rasterize the whole panel (~0.4 s on the GPU) while the reveal plays over nothing. */
+html.is-concealed .glass-window {
+  opacity: 0.002;
+  transform: scale(0.97);
+  filter: blur(6px);
 }
 
 /* Waves and ripples are motion and nothing else: with animations off they simply don't happen. */
